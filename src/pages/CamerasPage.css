@@ -1,0 +1,23 @@
+.cameras-page {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.cameras-page__main {
+  flex: 1;
+  overflow-y: auto;
+  min-width: 0;
+}
+
+/* Responsive: log panel collapses below */
+@media (max-width: 900px) {
+  .cameras-page {
+    flex-direction: column;
+  }
+  .cameras-page__main {
+    flex: none;
+    max-height: 55vh;
+  }
+}

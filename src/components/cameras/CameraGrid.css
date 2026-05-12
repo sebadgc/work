@@ -1,0 +1,21 @@
+.camera-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.camera-grid__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: 200px;
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
+}
+
+.camera-grid__spinner {
+  animation: pulse 1.5s infinite;
+  font-size: var(--text-xl);
+}

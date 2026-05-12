@@ -1,0 +1,102 @@
+.app-header {
+  padding: var(--space-3) var(--space-6);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface-1);
+  flex-shrink: 0;
+}
+
+.app-header__left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.app-header__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.app-header__logo {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, var(--accent-primary), #c44a22);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  color: #fff;
+  font-weight: 700;
+}
+
+.app-header__brand-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.app-header__title {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.app-header__subtitle {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+/* Navigation */
+.app-header__nav {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.app-header__nav-item {
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.app-header__nav-item:hover {
+  color: var(--text-secondary);
+  background: var(--surface-3);
+}
+
+.app-header__nav-item--active {
+  color: var(--text-primary);
+  background: var(--surface-4);
+}
+
+/* Right side */
+.app-header__right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.app-header__dev-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  user-select: none;
+}
+
+.app-header__dev-toggle input {
+  accent-color: var(--accent-primary);
+}

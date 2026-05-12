@@ -1,0 +1,67 @@
+.btn {
+  font-family: var(--font-display);
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  white-space: nowrap;
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Sizes */
+.btn--sm {
+  font-size: var(--text-sm);
+  padding: var(--space-1) var(--space-3);
+}
+
+.btn--md {
+  font-size: var(--text-base);
+  padding: var(--space-2) var(--space-4);
+}
+
+/* Variants */
+.btn--default {
+  background: transparent;
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
+}
+.btn--default:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.btn--primary {
+  background: var(--accent-primary);
+  border: none;
+  color: #fff;
+  font-weight: 600;
+}
+.btn--primary:hover:not(:disabled) {
+  background: var(--accent-primary-hover);
+  box-shadow: var(--shadow-glow-accent);
+}
+
+.btn--danger {
+  background: transparent;
+  border: 1px solid var(--status-inactive-muted);
+  color: var(--status-inactive);
+}
+.btn--danger:hover:not(:disabled) {
+  background: var(--status-inactive-muted);
+}
+
+.btn--ghost {
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+}
+.btn--ghost:hover:not(:disabled) {
+  color: var(--text-secondary);
+}
