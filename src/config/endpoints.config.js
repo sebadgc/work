@@ -17,6 +17,9 @@ export const ENDPOINTS = {
 
   // PATCH - Métodos adicionales de análisis (solo pluma extendida)
   PATCH_METHOD: (cameraId, method) => `/${cameraId}/${method}`,
+
+  // GET (SSE) - Stream de logs en tiempo real por cámara
+  STREAM_LOGS: (cameraId) => `/${cameraId}/logs`,
 };
 
 /**

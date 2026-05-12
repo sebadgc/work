@@ -10,8 +10,8 @@ import './CamerasPage.css';
 /**
  * Página principal del módulo de cámaras.
  * 
- * Flujo: el usuario agrega cámaras manualmente → configura tipo + params → POST al backend.
- * Las cámaras viven en el estado local de la sesión.
+ * Flujo: usuario agrega cámara → POST al backend → se abre SSE para logs reales.
+ * En modo dev se skipea el POST y el SSE (no hay backend).
  */
 export default function CamerasPage() {
   const {
@@ -19,28 +19,25 @@ export default function CamerasPage() {
     cameras, registerCamera, unregisterCamera,
     cameraStates, activateCamera, deactivateCamera, addMethod,
     logsByCamera, addLog, clearLogs,
-    startSimulatedLogs, stopSimulatedLogs,
+    startLogStream, stopLogStream,
     fileInputRef, handleFileInput, getObjectUrl, requestFile,
   } = useAppContext();
 
   const [selectedCameraId, setSelectedCameraId] = useState(null);
-
-  // ── Modales ──
   const [showAddModal, setShowAddModal] = useState(false);
   const [patchModal, setPatchModal] = useState(null);
 
-  // ── Agregar cámara (flujo unificado) ──
+  // ── Agregar cámara ──
   const handleAddCamera = useCallback(async ({ cameraId, source, processorType, config }) => {
-    // En dev, pedir archivo MP4 si no hay uno
     if (devMode) {
       await requestFile(cameraId);
     }
 
     const finalSource = devMode ? `file://${cameraId}.mp4` : source;
+    const label = processorType === 'pluma_extendida' ? 'pluma extendida' : 'detección de colisión';
 
-    addLog(cameraId, 'info', `Iniciando ${processorType === 'pluma_extendida' ? 'pluma extendida' : 'detección de colisión'}...`);
+    addLog(cameraId, 'info', `Iniciando ${label}...`);
 
-    // POST al backend (skip en dev)
     if (!devMode) {
       let res;
       if (processorType === 'pluma_extendida') {
@@ -49,41 +46,50 @@ export default function CamerasPage() {
         res = await cameraService.startCollisionDetection(cameraId, finalSource, config);
       }
       if (!res.ok) {
-        addLog(cameraId, 'error', `Error: ${res.error}`);
+        addLog(cameraId, 'error', `Error del backend: ${res.error}`);
         setShowAddModal(false);
         return;
       }
+      addLog(cameraId, 'info', 'Backend respondió OK — procesador iniciado');
     }
 
-    // Registrar en estado local
     registerCamera(cameraId, source || finalSource, cameraId);
     activateCamera(cameraId, processorType, config);
-    addLog(cameraId, 'info', `✓ Cámara activa — ${processorType === 'pluma_extendida' ? 'pluma extendida' : 'detección de colisión'}`);
+    addLog(cameraId, 'info', `Cámara registrada — ${label}`);
     setSelectedCameraId(cameraId);
 
-    if (devMode) startSimulatedLogs(cameraId, processorType);
+    // Conectar al stream de logs reales (solo si hay backend)
+    if (!devMode) {
+      startLogStream(cameraId);
+      addLog(cameraId, 'info', 'Conectado al stream de logs del backend');
+    }
+
     setShowAddModal(false);
-  }, [devMode, addLog, registerCamera, activateCamera, startSimulatedLogs, requestFile]);
+  }, [devMode, addLog, registerCamera, activateCamera, startLogStream, requestFile]);
 
   // ── Detener cámara ──
   const handleDelete = useCallback(async (cameraId) => {
-    addLog(cameraId, 'warn', 'Deteniendo cámara...');
+    addLog(cameraId, 'info', 'Enviando DELETE...');
+
+    // Cerrar stream de logs antes del delete
+    stopLogStream(cameraId);
+
     if (!devMode) {
       const res = await cameraService.deleteCamera(cameraId);
       if (!res.ok) {
         addLog(cameraId, 'error', `Error al detener: ${res.error}`);
         return;
       }
+      addLog(cameraId, 'info', 'Backend respondió OK — procesador detenido');
     }
-    stopSimulatedLogs(cameraId);
+
     deactivateCamera(cameraId);
     unregisterCamera(cameraId);
-    addLog(cameraId, 'info', '✗ Cámara detenida y removida');
-  }, [devMode, addLog, deactivateCamera, unregisterCamera, stopSimulatedLogs]);
+  }, [devMode, addLog, deactivateCamera, unregisterCamera, stopLogStream]);
 
   // ── Patch method ──
   const confirmPatch = useCallback(async (cameraId, methodId, config) => {
-    addLog(cameraId, 'info', `Agregando método: ${methodId}`);
+    addLog(cameraId, 'info', `Enviando PATCH /${cameraId}/${methodId}...`);
     if (!devMode) {
       const res = await cameraService.patchMethod(cameraId, methodId, config);
       if (!res.ok) {
@@ -91,12 +97,11 @@ export default function CamerasPage() {
         setPatchModal(null);
         return;
       }
+      addLog(cameraId, 'info', `Backend respondió OK — método ${methodId} activo`);
     }
     addMethod(cameraId, methodId);
-    addLog(cameraId, 'info', `✓ Método activo: ${methodId}`);
-    if (devMode) startSimulatedLogs(cameraId, methodId);
     setPatchModal(null);
-  }, [devMode, addLog, addMethod, startSimulatedLogs]);
+  }, [devMode, addLog, addMethod]);
 
   // ── Derived ──
   const selectedCamera = cameras.find(c => c.camera_id === selectedCameraId);
@@ -105,7 +110,6 @@ export default function CamerasPage() {
 
   return (
     <div className="cameras-page">
-      {/* File input oculto para modo dev */}
       <input
         ref={fileInputRef}
         type="file"
@@ -115,7 +119,6 @@ export default function CamerasPage() {
       />
 
       <div className="cameras-page__main">
-        {/* Toolbar */}
         <div className="cameras-page__toolbar">
           <Button variant="primary" size="md" onClick={() => setShowAddModal(true)}>
             + Agregar cámara
@@ -127,7 +130,6 @@ export default function CamerasPage() {
           </span>
         </div>
 
-        {/* Grid o empty state */}
         {cameras.length === 0 ? (
           <div className="cameras-page__empty">
             <div className="cameras-page__empty-icon">◉</div>
@@ -165,7 +167,6 @@ export default function CamerasPage() {
         onClearLogs={() => clearLogs(selectedCameraId)}
       />
 
-      {/* Modales */}
       {showAddModal && (
         <AddCameraModal
           devMode={devMode}
