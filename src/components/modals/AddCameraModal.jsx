@@ -7,7 +7,8 @@ import { Modal, ModalFooter, Button, FormField } from '../common';
  * Paso 1: Camera ID + Source (RTSP, solo en producción) + tipo de procesador
  * Paso 2: Configuración específica del procesador elegido
  * 
- * En modo dev no se pide source — se va a cargar un archivo local después.
+ * Collision config requiere: collision_alarm_id + not_detected_cooldown + detected_cooldown
+ * Pluma config requiere: not_detected_cooldown + detected_cooldown
  */
 export default function AddCameraModal({ devMode, existingCameraIds, onConfirm, onClose }) {
   const [step, setStep] = useState(1);
@@ -17,11 +18,11 @@ export default function AddCameraModal({ devMode, existingCameraIds, onConfirm, 
   const [source, setSource] = useState('');
   const [processorType, setProcessorType] = useState('pluma_extendida');
 
-  // Step 2 - Pluma
+  // Step 2 - Shared cooldowns
   const [notDetectedCooldown, setNotDetectedCooldown] = useState(5);
   const [detectedCooldown, setDetectedCooldown] = useState(2);
 
-  // Step 2 - Collision
+  // Step 2 - Collision specific
   const [collisionAlarmId, setCollisionAlarmId] = useState('');
 
   const idTaken = existingCameraIds.includes(cameraId.trim());
@@ -33,7 +34,11 @@ export default function AddCameraModal({ devMode, existingCameraIds, onConfirm, 
   const handleConfirm = () => {
     const config = processorType === 'pluma_extendida'
       ? { not_detected_cooldown: notDetectedCooldown, detected_cooldown: detectedCooldown }
-      : { collision_alarm_id: collisionAlarmId };
+      : {
+          collision_alarm_id: collisionAlarmId,
+          not_detected_cooldown: notDetectedCooldown,
+          detected_cooldown: detectedCooldown,
+        };
 
     onConfirm({
       cameraId: cameraId.trim(),
@@ -45,7 +50,7 @@ export default function AddCameraModal({ devMode, existingCameraIds, onConfirm, 
 
   const step2Valid = processorType === 'pluma_extendida'
     ? notDetectedCooldown > 0 && detectedCooldown > 0
-    : collisionAlarmId.trim().length > 0;
+    : collisionAlarmId.trim().length > 0 && notDetectedCooldown > 0 && detectedCooldown > 0;
 
   // ── Step 1 ──
   if (step === 1) {
@@ -97,28 +102,7 @@ export default function AddCameraModal({ devMode, existingCameraIds, onConfirm, 
       title={processorType === 'pluma_extendida' ? 'Config — Pluma Extendida' : 'Config — Detección de Colisión'}
       subtitle={`${cameraId}${source ? ` — ${source}` : ''}`}
     >
-      {processorType === 'pluma_extendida' ? (
-        <>
-          <FormField
-            label="Cooldown sin detección (seg)"
-            value={notDetectedCooldown}
-            onChange={setNotDetectedCooldown}
-            type="number"
-            min={1}
-            required
-            hint="Tiempo en segundos para volver a verificar cuando no hay detección"
-          />
-          <FormField
-            label="Cooldown con detección (seg)"
-            value={detectedCooldown}
-            onChange={setDetectedCooldown}
-            type="number"
-            min={1}
-            required
-            hint="Tiempo en segundos para volver a verificar cuando hubo detección"
-          />
-        </>
-      ) : (
+      {processorType === 'collision_detection' && (
         <FormField
           label="Collision Alarm ID"
           value={collisionAlarmId}
@@ -128,6 +112,24 @@ export default function AddCameraModal({ devMode, existingCameraIds, onConfirm, 
           placeholder="ej: ALARM-001"
         />
       )}
+      <FormField
+        label="Cooldown sin detección (seg)"
+        value={notDetectedCooldown}
+        onChange={setNotDetectedCooldown}
+        type="number"
+        min={1}
+        required
+        hint="Tiempo en segundos para volver a verificar cuando no hay detección"
+      />
+      <FormField
+        label="Cooldown con detección (seg)"
+        value={detectedCooldown}
+        onChange={setDetectedCooldown}
+        type="number"
+        min={1}
+        required
+        hint="Tiempo en segundos para volver a verificar cuando hubo detección"
+      />
 
       <ModalFooter>
         <Button variant="ghost" size="md" onClick={handleBack}>← Atrás</Button>

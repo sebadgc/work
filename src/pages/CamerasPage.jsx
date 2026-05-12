@@ -10,8 +10,8 @@ import './CamerasPage.css';
 /**
  * Página principal del módulo de cámaras.
  * 
- * En modo dev: se usa archivo local como source, pero el POST y SSE
- * se hacen igual contra el backend local.
+ * En modo dev: se usa el nombre real del archivo local como source para el POST.
+ * El backend recibe el path/nombre del archivo y lo procesa.
  */
 export default function CamerasPage() {
   const {
@@ -20,7 +20,7 @@ export default function CamerasPage() {
     cameraStates, activateCamera, deactivateCamera, addMethod,
     logsByCamera, addLog, clearLogs,
     startLogStream, stopLogStream,
-    fileInputRef, handleFileInput, getObjectUrl, requestFile,
+    fileInputRef, handleFileInput, getObjectUrl, getFileName, requestFile,
   } = useAppContext();
 
   const [selectedCameraId, setSelectedCameraId] = useState(null);
@@ -29,18 +29,19 @@ export default function CamerasPage() {
 
   // ── Agregar cámara ──
   const handleAddCamera = useCallback(async ({ cameraId, source, processorType, config }) => {
-    // En dev, pedir archivo local para preview en el frontend
+    let finalSource = source;
+
+    // En dev, pedir archivo local y usar su nombre como source
     if (devMode) {
-      await requestFile(cameraId);
+      const file = await requestFile(cameraId);
+      if (!file) return; // Usuario canceló
+      finalSource = file.name;
     }
 
-    // Source: en dev se usa el path local del archivo, en prod el RTSP
-    const finalSource = devMode ? `file://${cameraId}.mp4` : source;
     const label = processorType === 'pluma_extendida' ? 'pluma extendida' : 'detección de colisión';
+    addLog(cameraId, 'info', `Iniciando ${label} — source: ${finalSource}`);
 
-    addLog(cameraId, 'info', `Iniciando ${label}...`);
-
-    // POST al backend siempre (dev y prod)
+    // POST al backend siempre
     let res;
     if (processorType === 'pluma_extendida') {
       res = await cameraService.startPlumaExtendida(cameraId, finalSource, config);
@@ -54,11 +55,11 @@ export default function CamerasPage() {
     }
     addLog(cameraId, 'info', 'Backend respondió OK — procesador iniciado');
 
-    registerCamera(cameraId, source || finalSource, cameraId);
+    registerCamera(cameraId, finalSource, cameraId);
     activateCamera(cameraId, processorType, config);
     setSelectedCameraId(cameraId);
 
-    // Conectar al stream SSE de logs siempre
+    // Conectar al stream SSE de logs
     startLogStream(cameraId);
     addLog(cameraId, 'info', 'Conectado al stream de logs del backend');
 

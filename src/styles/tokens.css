@@ -3,59 +3,58 @@
  * 
  * Design tokens para toda la aplicación.
  * Un solo lugar para colores, tipografía, spacing, radios, etc.
- * Componentes usan estas variables — nunca valores hardcodeados.
  */
 
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Outfit:wght@300;400;500;600;700&display=swap');
 
 :root {
   /* ── Surface ── */
-  --surface-0: #060608;
-  --surface-1: #0c0c10;
-  --surface-2: #131318;
-  --surface-3: #1a1a22;
-  --surface-4: #24242e;
-  --surface-hover: #2a2a36;
+  --surface-0: #0a0a0f;
+  --surface-1: #111118;
+  --surface-2: #181820;
+  --surface-3: #20202a;
+  --surface-4: #2a2a36;
+  --surface-hover: #32323e;
   
   /* ── Borders ── */
-  --border-subtle: #1e1e28;
-  --border-default: #2a2a36;
-  --border-strong: #3a3a48;
+  --border-subtle: #23232e;
+  --border-default: #33333f;
+  --border-strong: #44444f;
   --border-focus: var(--accent-primary);
 
   /* ── Text ── */
-  --text-primary: #e8e8ed;
-  --text-secondary: #9494a8;
-  --text-tertiary: #5a5a6e;
-  --text-disabled: #3a3a48;
+  --text-primary: #ededf0;
+  --text-secondary: #a8a8bc;
+  --text-tertiary: #70708a;
+  --text-disabled: #4a4a5e;
 
   /* ── Accent ── */
-  --accent-primary: #e05a2b;
-  --accent-primary-hover: #f06a3b;
-  --accent-primary-muted: #e05a2b22;
-  --accent-secondary: #2b7de0;
-  --accent-secondary-muted: #2b7de022;
+  --accent-primary: #e86a3a;
+  --accent-primary-hover: #f47a4a;
+  --accent-primary-muted: #e86a3a25;
+  --accent-secondary: #4a9af5;
+  --accent-secondary-muted: #4a9af525;
   
   /* ── Semantic ── */
-  --status-active: #34d399;
-  --status-active-muted: #34d39922;
-  --status-inactive: #ef4444;
-  --status-inactive-muted: #ef444422;
-  --status-warning: #fbbf24;
-  --status-warning-muted: #fbbf2422;
-  --status-detection: #60a5fa;
-  --status-detection-muted: #60a5fa22;
+  --status-active: #3ee0a5;
+  --status-active-muted: #3ee0a525;
+  --status-inactive: #f06060;
+  --status-inactive-muted: #f0606025;
+  --status-warning: #f0c850;
+  --status-warning-muted: #f0c85025;
+  --status-detection: #70b8ff;
+  --status-detection-muted: #70b8ff25;
 
   /* ── Typography ── */
   --font-display: 'Outfit', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
   
-  --text-xs: 0.625rem;    /* 10px */
-  --text-sm: 0.75rem;     /* 12px */
-  --text-base: 0.8125rem; /* 13px */
-  --text-md: 0.875rem;    /* 14px */
-  --text-lg: 1rem;        /* 16px */
-  --text-xl: 1.25rem;     /* 20px */
+  --text-xs: 0.75rem;     /* 12px */
+  --text-sm: 0.8125rem;   /* 13px */
+  --text-base: 0.875rem;  /* 14px */
+  --text-md: 1rem;        /* 16px */
+  --text-lg: 1.125rem;    /* 18px */
+  --text-xl: 1.375rem;    /* 22px */
 
   /* ── Spacing ── */
   --space-1: 4px;

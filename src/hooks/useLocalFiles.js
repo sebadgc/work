@@ -2,7 +2,8 @@
  * useLocalFiles.js
  * 
  * Hook para gestionar archivos MP4 locales en modo desarrollo.
- * Permite cargar videos que simulan feeds RTSP.
+ * Permite cargar videos y expone tanto la URL para preview
+ * como el nombre real del archivo para enviar al backend.
  */
 
 import { useState, useCallback, useRef } from 'react';
@@ -14,7 +15,6 @@ export function useLocalFiles() {
   const pendingCallback = useRef(null);
 
   const setFile = useCallback((cameraId, file) => {
-    // Revocar URL anterior si existe
     setObjectUrls(prev => {
       if (prev[cameraId]) URL.revokeObjectURL(prev[cameraId]);
       return { ...prev, [cameraId]: URL.createObjectURL(file) };
@@ -40,13 +40,17 @@ export function useLocalFiles() {
     return objectUrls[cameraId] || null;
   }, [objectUrls]);
 
+  const getFileName = useCallback((cameraId) => {
+    return files[cameraId]?.name || null;
+  }, [files]);
+
   const hasFile = useCallback((cameraId) => {
     return !!files[cameraId];
   }, [files]);
 
   /**
    * Solicita al usuario que seleccione un archivo MP4.
-   * Devuelve una promise que resuelve cuando el usuario selecciona o cancela.
+   * Devuelve el File object (con .name para obtener la ruta real).
    */
   const requestFile = useCallback((cameraId) => {
     return new Promise((resolve) => {
@@ -78,6 +82,7 @@ export function useLocalFiles() {
     setFile,
     removeFile,
     getObjectUrl,
+    getFileName,
     hasFile,
     requestFile,
   };
