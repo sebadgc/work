@@ -4,16 +4,10 @@ import { Modal, ModalFooter, Button, FormField } from '../common';
 /**
  * Modal unificado para agregar una cámara.
  * 
- * Paso 1: Camera ID + Source (RTSP URL) + tipo de procesador
+ * Paso 1: Camera ID + Source (RTSP, solo en producción) + tipo de procesador
  * Paso 2: Configuración específica del procesador elegido
  * 
- * En modo dev, el source se reemplaza por un archivo local,
- * pero el campo se muestra igualmente para referencia.
- * 
- * @param {boolean} devMode
- * @param {string[]} existingCameraIds - IDs ya en uso
- * @param {function} onConfirm - ({ cameraId, source, processorType, config }) => void
- * @param {function} onClose
+ * En modo dev no se pide source — se va a cargar un archivo local después.
  */
 export default function AddCameraModal({ devMode, existingCameraIds, onConfirm, onClose }) {
   const [step, setStep] = useState(1);
@@ -66,15 +60,17 @@ export default function AddCameraModal({ devMode, existingCameraIds, onConfirm, 
           placeholder="ej: cam-pluma-01"
           hint={idTaken ? '⚠ Este ID ya está en uso' : 'Identificador único de la cámara en el backend'}
         />
-        <FormField
-          label="Source (RTSP URL)"
-          value={source}
-          onChange={setSource}
-          type="text"
-          required={!devMode}
-          placeholder="rtsp://ip:port/id/live"
-          hint={devMode ? 'Opcional en modo dev — se usará un archivo local' : 'URL del feed RTSP de la cámara'}
-        />
+        {!devMode && (
+          <FormField
+            label="Source (RTSP URL)"
+            value={source}
+            onChange={setSource}
+            type="text"
+            required
+            placeholder="rtsp://ip:port/id/live"
+            hint="URL del feed RTSP de la cámara"
+          />
+        )}
         <FormField
           label="Tipo de procesamiento"
           value={processorType}
