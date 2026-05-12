@@ -4,19 +4,19 @@ import { PLUMA_PATCH_METHODS } from '../../config';
 import './CameraCard.css';
 
 /**
- * Card individual de cámara.
+ * Card individual de cámara activa.
  * Muestra preview (RTSP o MP4 local), estado, métodos activos, y controles.
+ * 
+ * Las cámaras en este flujo siempre están activas (se crean al hacer POST).
  * 
  * @param {object} camera - { camera_id, name, source }
  * @param {object|null} state - estado activo desde useCameraState
  * @param {boolean} isSelected - si está seleccionada para ver logs
- * @param {boolean} devMode - si está en modo dev
+ * @param {boolean} devMode
  * @param {string|null} localVideoUrl - URL de objeto local (MP4)
  * @param {function} onSelect - callback click en card
- * @param {function} onStartPluma - callback iniciar pluma
- * @param {function} onStartCollision - callback iniciar colisión
- * @param {function} onDelete - callback eliminar
- * @param {function} onPatchMethod - callback agregar método
+ * @param {function} onDelete - callback detener/eliminar
+ * @param {function} onPatchMethod - callback agregar método PATCH
  */
 export default function CameraCard({
   camera,
@@ -25,8 +25,6 @@ export default function CameraCard({
   devMode,
   localVideoUrl,
   onSelect,
-  onStartPluma,
-  onStartCollision,
   onDelete,
   onPatchMethod,
 }) {
@@ -35,11 +33,11 @@ export default function CameraCard({
   const isPluma = state?.mode === 'pluma_extendida';
 
   useEffect(() => {
-    if (isActive && localVideoUrl && videoRef.current) {
+    if (localVideoUrl && videoRef.current) {
       videoRef.current.src = localVideoUrl;
       videoRef.current.play().catch(() => {});
     }
-  }, [isActive, localVideoUrl]);
+  }, [localVideoUrl]);
 
   const activeMethodLabels = (state?.activeMethods || []).map(id => {
     const method = PLUMA_PATCH_METHODS.find(m => m.id === id);
@@ -48,12 +46,12 @@ export default function CameraCard({
 
   return (
     <div
-      className={`camera-card ${isSelected ? 'camera-card--selected' : ''} ${isActive ? 'camera-card--active' : ''}`}
+      className={`camera-card ${isSelected ? 'camera-card--selected' : ''} camera-card--active`}
       onClick={() => onSelect(camera.camera_id)}
     >
       {/* Preview */}
       <div className="camera-card__preview">
-        {isActive && localVideoUrl ? (
+        {localVideoUrl ? (
           <video
             ref={videoRef}
             className="camera-card__video"
@@ -61,20 +59,18 @@ export default function CameraCard({
             loop
             playsInline
           />
-        ) : isActive ? (
+        ) : (
           <div className="camera-card__feed-indicator">
             <span className="camera-card__feed-icon">◉</span>
             <span className="camera-card__feed-label">RTSP ACTIVO</span>
           </div>
-        ) : (
-          <div className="camera-card__offline">SIN SEÑAL</div>
         )}
 
         {/* Status overlay */}
         <div className="camera-card__status-overlay">
-          <StatusDot status={isActive ? 'active' : 'inactive'} />
+          <StatusDot status="active" />
           <span className="camera-card__status-label">
-            {isActive ? (isPluma ? 'PLUMA' : 'COLISIÓN') : 'OFF'}
+            {isPluma ? 'PLUMA' : 'COLISIÓN'}
           </span>
         </div>
 
@@ -92,7 +88,11 @@ export default function CameraCard({
       <div className="camera-card__info">
         <div className="camera-card__header">
           <span className="camera-card__name">{camera.name || camera.camera_id}</span>
-          <span className="camera-card__id">{camera.camera_id}</span>
+          {isPluma ? (
+            <Badge color="green">pluma</Badge>
+          ) : (
+            <Badge color="blue">colisión</Badge>
+          )}
         </div>
         <div className="camera-card__source">
           {devMode ? '⬡ archivo local' : camera.source}
@@ -100,26 +100,13 @@ export default function CameraCard({
 
         {/* Actions */}
         <div className="camera-card__actions">
-          {!isActive ? (
-            <>
-              <Button variant="primary" size="sm" onClick={(e) => { e.stopPropagation(); onStartPluma(camera); }}>
-                Pluma Ext.
-              </Button>
-              <Button variant="default" size="sm" onClick={(e) => { e.stopPropagation(); onStartCollision(camera); }}>
-                Colisión
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button variant="danger" size="sm" onClick={(e) => { e.stopPropagation(); onDelete(camera.camera_id); }}>
-                Detener
-              </Button>
-              {isPluma && (
-                <Button variant="default" size="sm" onClick={(e) => { e.stopPropagation(); onPatchMethod(camera.camera_id); }}>
-                  + Método
-                </Button>
-              )}
-            </>
+          <Button variant="danger" size="sm" onClick={(e) => { e.stopPropagation(); onDelete(camera.camera_id); }}>
+            Detener
+          </Button>
+          {isPluma && (
+            <Button variant="default" size="sm" onClick={(e) => { e.stopPropagation(); onPatchMethod(camera.camera_id); }}>
+              + Método
+            </Button>
           )}
         </div>
       </div>

@@ -34,6 +34,17 @@ VITE_LOG_POLL_INTERVAL=2000         # Polling de logs en ms
 VITE_MAX_LOG_LINES=500              # Máx líneas de log por cámara
 ```
 
+## Flujo de uso
+
+1. Click en **"+ Agregar cámara"**
+2. Ingresar `camera_id` y `source` (URL RTSP). En modo dev, el source es opcional.
+3. Elegir tipo de procesamiento: **Pluma Extendida** o **Detección de Colisión**
+4. Configurar parámetros (cooldowns o alarm_id)
+5. Se hace POST al backend → la cámara aparece activa en el grid
+6. Para cámaras con pluma extendida: botón **"+ Método"** para agregar análisis PATCH
+
+No hay GET de cámaras — las cámaras se crean al hacer POST y viven en el estado local.
+
 ## Arquitectura
 
 ```
@@ -42,11 +53,11 @@ src/
 │   ├── app.config.js           # Variables de entorno y defaults
 │   ├── endpoints.config.js     # Endpoints API + PLUMA_PATCH_METHODS + BASE_COOLDOWN_FIELDS
 │   ├── dev.config.js           # Configuración solo-dev (logs simulados, archivos locales)
-│   └── index.js                # Barrel export
+│   └── index.js
 │
 ├── api/                        # Capa de comunicación con backend
 │   ├── apiClient.js            # Cliente HTTP singleton (fetch wrapper)
-│   ├── cameraService.js        # Servicio de dominio: fetchCameras, start*, delete, patch
+│   ├── cameraService.js        # startPlumaExtendida, startCollisionDetection, deleteCamera, patchMethod
 │   └── index.js
 │
 ├── hooks/                      # Custom hooks reutilizables
@@ -56,48 +67,48 @@ src/
 │   └── index.js
 │
 ├── context/                    # Estado global compartido
-│   ├── AppContext.jsx          # Provider que compone hooks + dev mode
+│   ├── AppContext.jsx          # Provider: registerCamera, unregisterCamera, dev mode
 │   └── index.js
 │
 ├── components/
 │   ├── common/                 # Componentes base reutilizables
-│   │   ├── StatusDot           # Indicador de estado (activo/inactivo/warning)
+│   │   ├── StatusDot           # Indicador de estado
 │   │   ├── Button              # Variantes: default, primary, danger, ghost
-│   │   ├── FormField           # Input con soporte text/number/select
+│   │   ├── FormField           # Input text/number/select
 │   │   ├── Modal + ModalFooter # Overlay con escape/click-fuera
 │   │   └── Badge               # Chip de estado con colores semánticos
 │   │
-│   ├── cameras/                # Módulo de cámaras
-│   │   ├── CameraCard          # Card con preview (RTSP/MP4), estado, métodos, acciones
-│   │   └── CameraGrid          # Grid responsive para cards
+│   ├── cameras/
+│   │   ├── CameraCard          # Card con preview, estado, métodos, acciones
+│   │   └── CameraGrid          # Grid responsive
 │   │
-│   ├── logs/                   # Módulo de logs
-│   │   └── LogPanel            # Panel lateral con auto-scroll, tabs por cámara, colores por tipo
+│   ├── logs/
+│   │   └── LogPanel            # Panel lateral con auto-scroll, tabs, colores por tipo
 │   │
-│   ├── modals/                 # Modales de configuración
-│   │   ├── StartPlumaModal     # Config cooldowns para pluma extendida
-│   │   ├── StartCollisionModal # Config collision_alarm_id
-│   │   └── PatchMethodModal    # 2 pasos: selección de método → config dinámica
+│   ├── modals/
+│   │   ├── AddCameraModal      # 2 pasos: camera_id + source + tipo → config específica
+│   │   ├── PatchMethodModal    # 2 pasos: selección de método → config dinámica
+│   │   ├── StartPlumaModal     # (disponible si se necesita iniciar por separado)
+│   │   └── StartCollisionModal # (disponible si se necesita iniciar por separado)
 │   │
 │   └── layout/
-│       └── AppHeader           # Barra superior con nav por módulos + toggle dev
+│       └── AppHeader           # Nav por módulos + toggle dev
 │
 ├── styles/
-│   ├── tokens.css              # Design tokens: colores, tipografía, spacing, radios
-│   └── global.css              # Reset, scrollbar, animaciones base
+│   ├── tokens.css              # Design tokens (CSS vars)
+│   └── global.css              # Reset, scrollbar, animaciones
 │
 ├── pages/
-│   └── CamerasPage             # Orquestador del módulo: fetch, modales, estado
+│   └── CamerasPage             # Orquestador: agregar cámara → POST → estado → logs
 │
 ├── App.jsx                     # Shell: header + router de módulos
-└── main.jsx                    # Entry point React
+└── main.jsx                    # Entry point
 ```
 
-## Endpoints esperados del backend
+## Endpoints del backend
 
 | Método | Ruta | Body | Descripción |
 |--------|------|------|-------------|
-| GET | `/cameras` | — | Lista de cámaras configuradas `[{ camera_id, name, source }]` |
 | POST | `/start_pluma_extendida` | `{ camera_id, source, pluma_config }` | Inicia procesamiento pluma |
 | POST | `/start_collision_detection` | `{ camera_id, source, collision_config }` | Inicia detección colisión |
 | DELETE | `/{camera_id}` | — | Detiene cámara |
@@ -118,20 +129,11 @@ Todos los configs heredan `not_detected_cooldown` (int >0) y `detected_cooldown`
 
 ## Modo desarrollo vs producción
 
-- **Desarrollo (`VITE_APP_MODE=development`)**: aparece toggle "Modo local" en el header.
-  Al activarlo, los videos se cargan desde archivos MP4 locales y los logs se simulan.
-  No se hacen requests al backend.
-
-- **Producción (`VITE_APP_MODE=production`)**: el toggle no aparece.
-  Los feeds son RTSP reales obtenidos del backend.
-  Todos los requests van a la API.
-
-Para deploy limpio: los archivos `dev.config.js` y `useLocalFiles.js` solo se importan
-condicionalmente, y el toggle no se renderiza. No es necesario eliminar archivos.
+- **Desarrollo**: toggle "Modo local" en el header. Videos desde MP4 locales, logs simulados, sin requests al backend.
+- **Producción**: el toggle no aparece. Feeds RTSP reales, requests al backend.
 
 ## Expandir con nuevos módulos
 
 1. Agregar entrada en `APP_MODULES` en `App.jsx`
 2. Crear página en `src/pages/NuevoModulo.jsx`
 3. Agregar case en `renderModule()` de `AppShell`
-4. (Opcional) agregar servicios en `src/api/`, hooks en `src/hooks/`

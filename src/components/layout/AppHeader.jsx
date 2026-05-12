@@ -32,7 +32,9 @@ export default function AppHeader({
           <div className="app-header__brand-text">
             <h1 className="app-header__title">Vision Control</h1>
             <span className="app-header__subtitle">
-              {activeCameraCount} activa{activeCameraCount !== 1 ? 's' : ''} / {totalCameraCount} configurada{totalCameraCount !== 1 ? 's' : ''}
+              {activeCameraCount === 0
+                ? 'Sin cámaras activas'
+                : `${activeCameraCount} cámara${activeCameraCount !== 1 ? 's' : ''} activa${activeCameraCount !== 1 ? 's' : ''}`}
             </span>
           </div>
         </div>

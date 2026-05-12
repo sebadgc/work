@@ -1,8 +1,8 @@
 /**
  * cameraService.js
  * 
- * Servicio de cámara: encapsula todas las llamadas a la API
- * relacionadas con cámaras y procesamiento de video.
+ * Servicio de cámara: encapsula todas las llamadas a la API.
+ * Solo expone los métodos que existen en el backend real.
  */
 
 import apiClient from './apiClient';
@@ -10,18 +10,8 @@ import { ENDPOINTS } from '../config';
 
 const cameraService = {
   /**
-   * Obtener lista de cámaras configuradas en el backend.
-   * Devuelve array de { camera_id, name, source }.
-   */
-  async fetchCameras() {
-    return apiClient.get(ENDPOINTS.GET_CAMERAS);
-  },
-
-  /**
    * Iniciar procesamiento pluma extendida.
-   * @param {string} cameraId
-   * @param {string} source - URL RTSP o path local
-   * @param {object} plumaConfig - { not_detected_cooldown, detected_cooldown }
+   * POST /start_pluma_extendida
    */
   async startPlumaExtendida(cameraId, source, plumaConfig) {
     return apiClient.post(ENDPOINTS.START_PLUMA_EXTENDIDA, {
@@ -33,9 +23,7 @@ const cameraService = {
 
   /**
    * Iniciar detección de colisión.
-   * @param {string} cameraId
-   * @param {string} source
-   * @param {object} collisionConfig - { collision_alarm_id }
+   * POST /start_collision_detection
    */
   async startCollisionDetection(cameraId, source, collisionConfig) {
     return apiClient.post(ENDPOINTS.START_COLLISION_DETECTION, {
@@ -47,7 +35,7 @@ const cameraService = {
 
   /**
    * Detener cámara.
-   * @param {string} cameraId
+   * DELETE /{camera_id}
    */
   async deleteCamera(cameraId) {
     return apiClient.delete(ENDPOINTS.DELETE_CAMERA(cameraId));
@@ -55,9 +43,7 @@ const cameraService = {
 
   /**
    * Agregar método de análisis a cámara con pluma extendida.
-   * @param {string} cameraId
-   * @param {string} methodId - nombre del método (patas, signaler, etc.)
-   * @param {object} config - config específico del método + cooldowns heredados
+   * PATCH /{camera_id}/{method}
    */
   async patchMethod(cameraId, methodId, config = {}) {
     const body = Object.keys(config).length > 0 ? config : undefined;

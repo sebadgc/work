@@ -1,112 +1,71 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { cameraService } from '../api';
 import { useAppContext } from '../context';
+import { Button } from '../components/common';
 import { CameraCard, CameraGrid } from '../components/cameras';
 import { LogPanel } from '../components/logs';
-import { StartPlumaModal, StartCollisionModal, PatchMethodModal } from '../components/modals';
+import { AddCameraModal, PatchMethodModal } from '../components/modals';
 import './CamerasPage.css';
 
 /**
  * Página principal del módulo de cámaras.
- * Usa AppContext para estado compartido.
- * No inventa datos: las cámaras se obtienen del backend.
+ * 
+ * Flujo: el usuario agrega cámaras manualmente → configura tipo + params → POST al backend.
+ * Las cámaras viven en el estado local de la sesión.
  */
 export default function CamerasPage() {
   const {
     devMode,
-    cameras, setCameras,
+    cameras, registerCamera, unregisterCamera,
     cameraStates, activateCamera, deactivateCamera, addMethod,
     logsByCamera, addLog, clearLogs,
     startSimulatedLogs, stopSimulatedLogs,
-    fileInputRef, handleFileInput, getObjectUrl, hasFile, requestFile,
+    fileInputRef, handleFileInput, getObjectUrl, requestFile,
   } = useAppContext();
 
-  const [loadingCameras, setLoadingCameras] = useState(true);
   const [selectedCameraId, setSelectedCameraId] = useState(null);
 
   // ── Modales ──
-  const [plumaModal, setPlumaModal] = useState(null);
-  const [collisionModal, setCollisionModal] = useState(null);
+  const [showAddModal, setShowAddModal] = useState(false);
   const [patchModal, setPatchModal] = useState(null);
 
-  // ── Fetch cámaras del backend ──
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      setLoadingCameras(true);
-      const res = await cameraService.fetchCameras();
-      if (cancelled) return;
-      if (res.ok && Array.isArray(res.data)) {
-        setCameras(res.data);
+  // ── Agregar cámara (flujo unificado) ──
+  const handleAddCamera = useCallback(async ({ cameraId, source, processorType, config }) => {
+    // En dev, pedir archivo MP4 si no hay uno
+    if (devMode) {
+      await requestFile(cameraId);
+    }
+
+    const finalSource = devMode ? `file://${cameraId}.mp4` : source;
+
+    addLog(cameraId, 'info', `Iniciando ${processorType === 'pluma_extendida' ? 'pluma extendida' : 'detección de colisión'}...`);
+
+    // POST al backend (skip en dev)
+    if (!devMode) {
+      let res;
+      if (processorType === 'pluma_extendida') {
+        res = await cameraService.startPlumaExtendida(cameraId, finalSource, config);
       } else {
-        addLog('SYSTEM', 'error', `No se pudieron obtener cámaras: ${res.error || 'sin respuesta'}`);
-        setCameras([]);
+        res = await cameraService.startCollisionDetection(cameraId, finalSource, config);
       }
-      setLoadingCameras(false);
-    }
-    load();
-    return () => { cancelled = true; };
-  }, [setCameras, addLog]);
-
-  // ── Start pluma extendida ──
-  const handleStartPluma = useCallback(async (camera) => {
-    if (devMode && !hasFile(camera.camera_id)) {
-      const file = await requestFile(camera.camera_id);
-      if (!file) return;
-    }
-    setPlumaModal(camera);
-  }, [devMode, hasFile, requestFile]);
-
-  const confirmPluma = useCallback(async (camera, config) => {
-    const source = devMode ? `file://${camera.camera_id}.mp4` : camera.source;
-    addLog(camera.camera_id, 'info', `Iniciando pluma extendida — cooldowns: ${config.not_detected_cooldown}s / ${config.detected_cooldown}s`);
-
-    if (!devMode) {
-      const res = await cameraService.startPlumaExtendida(camera.camera_id, source, config);
       if (!res.ok) {
-        addLog(camera.camera_id, 'error', `Error: ${res.error}`);
-        setPlumaModal(null);
+        addLog(cameraId, 'error', `Error: ${res.error}`);
+        setShowAddModal(false);
         return;
       }
     }
 
-    activateCamera(camera.camera_id, 'pluma_extendida', config);
-    addLog(camera.camera_id, 'info', '✓ Cámara activa — pluma extendida');
-    setSelectedCameraId(camera.camera_id);
-    if (devMode) startSimulatedLogs(camera.camera_id, 'pluma_extendida');
-    setPlumaModal(null);
-  }, [devMode, addLog, activateCamera, startSimulatedLogs]);
+    // Registrar en estado local
+    registerCamera(cameraId, source || finalSource, cameraId);
+    activateCamera(cameraId, processorType, config);
+    addLog(cameraId, 'info', `✓ Cámara activa — ${processorType === 'pluma_extendida' ? 'pluma extendida' : 'detección de colisión'}`);
+    setSelectedCameraId(cameraId);
 
-  // ── Start collision detection ──
-  const handleStartCollision = useCallback(async (camera) => {
-    if (devMode && !hasFile(camera.camera_id)) {
-      const file = await requestFile(camera.camera_id);
-      if (!file) return;
-    }
-    setCollisionModal(camera);
-  }, [devMode, hasFile, requestFile]);
+    if (devMode) startSimulatedLogs(cameraId, processorType);
+    setShowAddModal(false);
+  }, [devMode, addLog, registerCamera, activateCamera, startSimulatedLogs, requestFile]);
 
-  const confirmCollision = useCallback(async (camera, config) => {
-    const source = devMode ? `file://${camera.camera_id}.mp4` : camera.source;
-    addLog(camera.camera_id, 'info', `Iniciando detección de colisión — alarm: ${config.collision_alarm_id}`);
-
-    if (!devMode) {
-      const res = await cameraService.startCollisionDetection(camera.camera_id, source, config);
-      if (!res.ok) {
-        addLog(camera.camera_id, 'error', `Error: ${res.error}`);
-        setCollisionModal(null);
-        return;
-      }
-    }
-
-    activateCamera(camera.camera_id, 'collision_detection', config);
-    addLog(camera.camera_id, 'info', '✓ Cámara activa — detección de colisión');
-    setSelectedCameraId(camera.camera_id);
-    if (devMode) startSimulatedLogs(camera.camera_id, 'collision_detection');
-    setCollisionModal(null);
-  }, [devMode, addLog, activateCamera, startSimulatedLogs]);
-
-  // ── Delete camera ──
+  // ── Detener cámara ──
   const handleDelete = useCallback(async (cameraId) => {
     addLog(cameraId, 'warn', 'Deteniendo cámara...');
     if (!devMode) {
@@ -118,8 +77,9 @@ export default function CamerasPage() {
     }
     stopSimulatedLogs(cameraId);
     deactivateCamera(cameraId);
-    addLog(cameraId, 'info', '✗ Cámara detenida');
-  }, [devMode, addLog, deactivateCamera, stopSimulatedLogs]);
+    unregisterCamera(cameraId);
+    addLog(cameraId, 'info', '✗ Cámara detenida y removida');
+  }, [devMode, addLog, deactivateCamera, unregisterCamera, stopSimulatedLogs]);
 
   // ── Patch method ──
   const confirmPatch = useCallback(async (cameraId, methodId, config) => {
@@ -141,6 +101,7 @@ export default function CamerasPage() {
   // ── Derived ──
   const selectedCamera = cameras.find(c => c.camera_id === selectedCameraId);
   const selectedLogs = logsByCamera[selectedCameraId] || [];
+  const existingIds = cameras.map(c => c.camera_id);
 
   return (
     <div className="cameras-page">
@@ -154,23 +115,44 @@ export default function CamerasPage() {
       />
 
       <div className="cameras-page__main">
-        <CameraGrid loading={loadingCameras}>
-          {cameras.map((cam) => (
-            <CameraCard
-              key={cam.camera_id}
-              camera={cam}
-              state={cameraStates[cam.camera_id]}
-              isSelected={selectedCameraId === cam.camera_id}
-              devMode={devMode}
-              localVideoUrl={getObjectUrl(cam.camera_id)}
-              onSelect={setSelectedCameraId}
-              onStartPluma={handleStartPluma}
-              onStartCollision={handleStartCollision}
-              onDelete={handleDelete}
-              onPatchMethod={(id) => setPatchModal(id)}
-            />
-          ))}
-        </CameraGrid>
+        {/* Toolbar */}
+        <div className="cameras-page__toolbar">
+          <Button variant="primary" size="md" onClick={() => setShowAddModal(true)}>
+            + Agregar cámara
+          </Button>
+          <span className="cameras-page__count">
+            {cameras.length === 0
+              ? 'Sin cámaras activas'
+              : `${cameras.length} cámara${cameras.length > 1 ? 's' : ''} activa${cameras.length > 1 ? 's' : ''}`}
+          </span>
+        </div>
+
+        {/* Grid o empty state */}
+        {cameras.length === 0 ? (
+          <div className="cameras-page__empty">
+            <div className="cameras-page__empty-icon">◉</div>
+            <p className="cameras-page__empty-title">No hay cámaras activas</p>
+            <p className="cameras-page__empty-hint">
+              Presioná "Agregar cámara" para iniciar un procesador con su camera_id y fuente RTSP.
+            </p>
+          </div>
+        ) : (
+          <CameraGrid>
+            {cameras.map((cam) => (
+              <CameraCard
+                key={cam.camera_id}
+                camera={cam}
+                state={cameraStates[cam.camera_id]}
+                isSelected={selectedCameraId === cam.camera_id}
+                devMode={devMode}
+                localVideoUrl={getObjectUrl(cam.camera_id)}
+                onSelect={setSelectedCameraId}
+                onDelete={handleDelete}
+                onPatchMethod={(id) => setPatchModal(id)}
+              />
+            ))}
+          </CameraGrid>
+        )}
       </div>
 
       <LogPanel
@@ -184,18 +166,12 @@ export default function CamerasPage() {
       />
 
       {/* Modales */}
-      {plumaModal && (
-        <StartPlumaModal
-          camera={plumaModal}
-          onConfirm={(config) => confirmPluma(plumaModal, config)}
-          onClose={() => setPlumaModal(null)}
-        />
-      )}
-      {collisionModal && (
-        <StartCollisionModal
-          camera={collisionModal}
-          onConfirm={(config) => confirmCollision(collisionModal, config)}
-          onClose={() => setCollisionModal(null)}
+      {showAddModal && (
+        <AddCameraModal
+          devMode={devMode}
+          existingCameraIds={existingIds}
+          onConfirm={handleAddCamera}
+          onClose={() => setShowAddModal(false)}
         />
       )}
       {patchModal && (

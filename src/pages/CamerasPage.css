@@ -9,9 +9,57 @@
   flex: 1;
   overflow-y: auto;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
-/* Responsive: log panel collapses below */
+/* Toolbar */
+.cameras-page__toolbar {
+  padding: var(--space-4) var(--space-4) 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-shrink: 0;
+}
+
+.cameras-page__count {
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+}
+
+/* Empty state */
+.cameras-page__empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8);
+  text-align: center;
+}
+
+.cameras-page__empty-icon {
+  font-size: 2.5rem;
+  color: var(--text-disabled);
+  margin-bottom: var(--space-4);
+  opacity: 0.4;
+}
+
+.cameras-page__empty-title {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-2);
+}
+
+.cameras-page__empty-hint {
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  max-width: 360px;
+  line-height: 1.5;
+}
+
+/* Responsive */
 @media (max-width: 900px) {
   .cameras-page {
     flex-direction: column;

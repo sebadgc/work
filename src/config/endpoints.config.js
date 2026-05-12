@@ -6,9 +6,6 @@
  */
 
 export const ENDPOINTS = {
-  // GET - Obtener cámaras configuradas en el backend (settings)
-  GET_CAMERAS: '/cameras',
-
   // POST - Iniciar procesamiento pluma extendida
   START_PLUMA_EXTENDIDA: '/start_pluma_extendida',
 

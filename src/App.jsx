@@ -16,7 +16,7 @@ const APP_MODULES = [
 
 function AppShell() {
   const [activeModule, setActiveModule] = useState('cameras');
-  const { devMode, setDevMode, cameras, getActiveCameras } = useAppContext();
+  const { devMode, setDevMode, cameras } = useAppContext();
 
   const renderModule = () => {
     switch (activeModule) {
@@ -39,7 +39,7 @@ function AppShell() {
         onModuleChange={setActiveModule}
         devMode={devMode}
         onToggleDevMode={setDevMode}
-        activeCameraCount={getActiveCameras().length}
+        activeCameraCount={cameras.length}
         totalCameraCount={cameras.length}
       />
       {renderModule()}
