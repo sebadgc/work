@@ -1,56 +1,48 @@
-import { useState } from 'react';
-import { AppProvider, useAppContext } from './context';
-import { AppHeader } from './components/layout';
-import { CamerasPage } from './pages';
+import { useState, Suspense } from 'react';
+import { isDev } from './config';
+import PROJECTS from './config/projects.config';
+import { AppHeader, Sidebar } from './components/layout';
 import './styles/global.css';
 
 /**
- * Módulos disponibles.
- * Para agregar uno nuevo: agregar entrada acá + crear página + agregar case abajo.
+ * Shell global de la plataforma.
+ *
+ * Estructura: Sidebar (izquierda) + Header (arriba) + Contenido del proyecto.
+ * Los proyectos se registran en projects.config.js.
+ * Cada proyecto trae su propio componente y (opcionalmente) su provider.
  */
-const APP_MODULES = [
-  { id: 'cameras', label: 'Cámaras' },
-  // { id: 'analytics', label: 'Analytics' },
-  // { id: 'settings', label: 'Configuración' },
-];
-
-function AppShell() {
-  const [activeModule, setActiveModule] = useState('cameras');
-  const { devMode, setDevMode, cameras } = useAppContext();
-
-  const renderModule = () => {
-    switch (activeModule) {
-      case 'cameras':
-        return <CamerasPage />;
-      default:
-        return (
-          <div style={{ padding: 40, color: 'var(--text-tertiary)' }}>
-            Módulo "{activeModule}" — próximamente
-          </div>
-        );
-    }
-  };
-
-  return (
-    <div className="app-root">
-      <AppHeader
-        activeModule={activeModule}
-        modules={APP_MODULES}
-        onModuleChange={setActiveModule}
-        devMode={devMode}
-        onToggleDevMode={setDevMode}
-        activeCameraCount={cameras.length}
-        totalCameraCount={cameras.length}
-      />
-      {renderModule()}
-    </div>
-  );
-}
-
 export default function App() {
+  const [activeProjectId, setActiveProjectId] = useState(PROJECTS[0]?.id || '');
+  const [devMode, setDevMode] = useState(isDev());
+
+  const activeProject = PROJECTS.find(p => p.id === activeProjectId);
+  const ProjectComponent = activeProject?.component;
+
   return (
-    <AppProvider>
-      <AppShell />
-    </AppProvider>
+    <div className="app-shell">
+      <Sidebar
+        projects={PROJECTS}
+        activeProjectId={activeProjectId}
+        onSelectProject={setActiveProjectId}
+      />
+      <div className="app-main">
+        <AppHeader
+          activeProjectLabel={activeProject?.label || ''}
+          devMode={devMode}
+          onToggleDevMode={setDevMode}
+        />
+        <div className="app-content">
+          <Suspense fallback={
+            <div className="app-loading">Cargando módulo...</div>
+          }>
+            {ProjectComponent ? (
+              <ProjectComponent devMode={devMode} />
+            ) : (
+              <div className="app-loading">Proyecto no encontrado</div>
+            )}
+          </Suspense>
+        </div>
+      </div>
+    </div>
   );
 }

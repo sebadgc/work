@@ -1,28 +1,19 @@
-import { Badge, Button } from '../common';
+import { Badge } from '../common';
 import { isDev } from '../../config';
 import './AppHeader.css';
 
 /**
- * Header de la aplicación.
- * Incluye navegación por módulos (preparado para expansión)
- * y toggle de modo dev (solo visible si isDev()).
- * 
- * @param {string} activeModule - módulo actualmente seleccionado
- * @param {Array} modules - [{ id, label }]
- * @param {function} onModuleChange
- * @param {boolean} devMode - si el modo dev está activo
+ * Header global de la plataforma.
+ * Solo brand + nombre del proyecto activo + dev toggle.
+ *
+ * @param {string} activeProjectLabel - nombre del proyecto actualmente seleccionado
+ * @param {boolean} devMode
  * @param {function} onToggleDevMode
- * @param {number} activeCameraCount
- * @param {number} totalCameraCount
  */
 export default function AppHeader({
-  activeModule,
-  modules,
-  onModuleChange,
+  activeProjectLabel,
   devMode,
   onToggleDevMode,
-  activeCameraCount,
-  totalCameraCount,
 }) {
   return (
     <header className="app-header">
@@ -31,26 +22,9 @@ export default function AppHeader({
           <div className="app-header__logo">◈</div>
           <div className="app-header__brand-text">
             <h1 className="app-header__title">Vision Control</h1>
-            <span className="app-header__subtitle">
-              {activeCameraCount === 0
-                ? 'Sin cámaras activas'
-                : `${activeCameraCount} cámara${activeCameraCount !== 1 ? 's' : ''} activa${activeCameraCount !== 1 ? 's' : ''}`}
-            </span>
+            <span className="app-header__subtitle">{activeProjectLabel}</span>
           </div>
         </div>
-
-        {/* Module navigation - extensible */}
-        <nav className="app-header__nav">
-          {modules.map(mod => (
-            <button
-              key={mod.id}
-              className={`app-header__nav-item ${activeModule === mod.id ? 'app-header__nav-item--active' : ''}`}
-              onClick={() => onModuleChange(mod.id)}
-            >
-              {mod.label}
-            </button>
-          ))}
-        </nav>
       </div>
 
       <div className="app-header__right">

@@ -1,5 +1,5 @@
 .app-header {
-  padding: var(--space-3) var(--space-6);
+  padding: var(--space-2) var(--space-4);
   border-bottom: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
@@ -11,7 +11,6 @@
 .app-header__left {
   display: flex;
   align-items: center;
-  gap: var(--space-8);
 }
 
 .app-header__brand {
@@ -21,14 +20,14 @@
 }
 
 .app-header__logo {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border-radius: var(--radius-md);
   background: linear-gradient(135deg, var(--accent-primary), #c44a22);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1rem;
+  font-size: 0.85rem;
   color: #fff;
   font-weight: 700;
 }
@@ -39,7 +38,7 @@
 }
 
 .app-header__title {
-  font-size: var(--text-lg);
+  font-size: var(--text-md);
   font-weight: 700;
   letter-spacing: -0.03em;
   margin: 0;
@@ -51,36 +50,6 @@
   color: var(--text-tertiary);
 }
 
-/* Navigation */
-.app-header__nav {
-  display: flex;
-  gap: var(--space-1);
-}
-
-.app-header__nav-item {
-  background: transparent;
-  border: none;
-  color: var(--text-tertiary);
-  font-family: var(--font-display);
-  font-size: var(--text-sm);
-  font-weight: 500;
-  padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.app-header__nav-item:hover {
-  color: var(--text-secondary);
-  background: var(--surface-3);
-}
-
-.app-header__nav-item--active {
-  color: var(--text-primary);
-  background: var(--surface-4);
-}
-
-/* Right side */
 .app-header__right {
   display: flex;
   align-items: center;

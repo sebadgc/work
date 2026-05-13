@@ -1,8 +1,6 @@
 /**
  * global.css
- * 
  * Reset base y estilos globales.
- * No define ningún componente — solo el canvas base.
  */
 
 @import './tokens.css';
@@ -23,7 +21,7 @@ html, body, #root {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Scrollbar global */
+/* Scrollbar */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--surface-4); border-radius: var(--radius-full); }
@@ -50,10 +48,31 @@ input:focus, button:focus-visible {
   outline-offset: 1px;
 }
 
-/* App root layout */
-.app-root {
+/* Global app layout */
+.app-shell {
   display: flex;
-  flex-direction: column;
   height: 100vh;
   overflow: hidden;
+}
+
+.app-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.app-content {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.app-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
 }
