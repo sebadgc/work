@@ -1,5 +1,6 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { cameraService } from '../api';
+import { ENV } from '../config/app.config';
 import { useAppContext } from '../context';
 import { Button } from '../components/common';
 import { CameraCard, CameraGrid } from '../components/cameras';
@@ -7,41 +8,41 @@ import { LogPanel } from '../components/logs';
 import { AddCameraModal, PatchMethodModal } from '../components/modals';
 import './CamerasPage.css';
 
-/**
- * Página principal del módulo de cámaras.
- * 
- * En modo dev: se usa el nombre real del archivo local como source para el POST.
- * El backend recibe el path/nombre del archivo y lo procesa.
- */
 export default function CamerasPage() {
   const {
     devMode,
     cameras, registerCamera, unregisterCamera,
-    cameraStates, activateCamera, deactivateCamera, addMethod,
+    cameraStates, activateCamera, deactivateCamera, addMethod, removeMethod,
     logsByCamera, addLog, clearLogs,
     startLogStream, stopLogStream,
-    fileInputRef, handleFileInput, getObjectUrl, getFileName, requestFile,
+    fileInputRef, handleFileInput, getObjectUrl, requestFile,
   } = useAppContext();
 
   const [selectedCameraId, setSelectedCameraId] = useState(null);
+  const [unreadCameras, setUnreadCameras] = useState([]);
+  const prevLogCounts = useRef({});
   const [showAddModal, setShowAddModal] = useState(false);
   const [patchModal, setPatchModal] = useState(null);
+
+  // Wrapper para seleccionar cámara y limpiar su estado "no leído"
+  const selectCamera = useCallback((camId) => {
+    setSelectedCameraId(camId);
+    setUnreadCameras(prev => prev.filter(id => id !== camId));
+  }, []);
 
   // ── Agregar cámara ──
   const handleAddCamera = useCallback(async ({ cameraId, source, processorType, config }) => {
     let finalSource = source;
 
-    // En dev, pedir archivo local y usar su nombre como source
     if (devMode) {
       const file = await requestFile(cameraId);
-      if (!file) return; // Usuario canceló
-      finalSource = file.name;
+      if (!file) return;
+      finalSource = `${ENV.DEV_VIDEO_DIR}/${file.name}`;
     }
 
     const label = processorType === 'pluma_extendida' ? 'pluma extendida' : 'detección de colisión';
     addLog(cameraId, 'info', `Iniciando ${label} — source: ${finalSource}`);
 
-    // POST al backend siempre
     let res;
     if (processorType === 'pluma_extendida') {
       res = await cameraService.startPlumaExtendida(cameraId, finalSource, config);
@@ -59,7 +60,6 @@ export default function CamerasPage() {
     activateCamera(cameraId, processorType, config);
     setSelectedCameraId(cameraId);
 
-    // Conectar al stream SSE de logs
     startLogStream(cameraId);
     addLog(cameraId, 'info', 'Conectado al stream de logs del backend');
 
@@ -82,7 +82,7 @@ export default function CamerasPage() {
     unregisterCamera(cameraId);
   }, [addLog, deactivateCamera, unregisterCamera, stopLogStream]);
 
-  // ── Patch method ──
+  // ── Activar método PATCH ──
   const confirmPatch = useCallback(async (cameraId, methodId, config) => {
     addLog(cameraId, 'info', `Enviando PATCH /${cameraId}/${methodId}...`);
 
@@ -97,6 +97,32 @@ export default function CamerasPage() {
     addMethod(cameraId, methodId);
     setPatchModal(null);
   }, [addLog, addMethod]);
+
+  // ── Desactivar método PATCH ──
+  const handleToggleMethodOff = useCallback(async (cameraId, methodId) => {
+    addLog(cameraId, 'info', `Desactivando método: ${methodId}...`);
+
+    const res = await cameraService.patchMethod(cameraId, methodId);
+    if (!res.ok) {
+      addLog(cameraId, 'error', `Error PATCH: ${res.error}`);
+      return;
+    }
+    addLog(cameraId, 'info', `Backend respondió OK — método ${methodId} desactivado`);
+
+    removeMethod(cameraId, methodId);
+    setPatchModal(null);
+  }, [addLog, removeMethod]);
+
+  // Detectar logs nuevos en cámaras que no estamos mirando
+  useEffect(() => {
+    Object.entries(logsByCamera).forEach(([camId, logs]) => {
+      const prevCount = prevLogCounts.current[camId] || 0;
+      if (logs.length > prevCount && camId !== selectedCameraId) {
+        setUnreadCameras(prev => prev.includes(camId) ? prev : [...prev, camId]);
+      }
+      prevLogCounts.current[camId] = logs.length;
+    });
+  }, [logsByCamera, selectedCameraId]);
 
   // ── Derived ──
   const selectedCamera = cameras.find(c => c.camera_id === selectedCameraId);
@@ -143,7 +169,7 @@ export default function CamerasPage() {
                 isSelected={selectedCameraId === cam.camera_id}
                 devMode={devMode}
                 localVideoUrl={getObjectUrl(cam.camera_id)}
-                onSelect={setSelectedCameraId}
+                onSelect={selectCamera}
                 onDelete={handleDelete}
                 onPatchMethod={(id) => setPatchModal(id)}
               />
@@ -158,7 +184,8 @@ export default function CamerasPage() {
         selectedCameraName={selectedCamera?.name}
         allCameras={cameras}
         cameraStates={cameraStates}
-        onSelectCamera={setSelectedCameraId}
+        unreadCameras={unreadCameras}
+        onSelectCamera={selectCamera}
         onClearLogs={() => clearLogs(selectedCameraId)}
       />
 
@@ -175,6 +202,7 @@ export default function CamerasPage() {
           cameraId={patchModal}
           activeMethods={cameraStates[patchModal]?.activeMethods || []}
           onConfirm={(methodId, config) => confirmPatch(patchModal, methodId, config)}
+          onToggleOff={(methodId) => handleToggleMethodOff(patchModal, methodId)}
           onClose={() => setPatchModal(null)}
         />
       )}
