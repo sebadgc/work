@@ -1,29 +1,44 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 import { Button } from '../common';
 import './LogPanel.css';
 
-/**
- * Panel lateral de logs en tiempo real.
- * Muestra logs de la cámara seleccionada con auto-scroll.
- * 
- * @param {Array} logs - array de { time, type, message }
- * @param {string|null} selectedCameraId
- * @param {string|null} selectedCameraName
- * @param {Array} allCameras - lista de todas las cámaras para tabs
- * @param {object} cameraStates - estados activos
- * @param {function} onSelectCamera
- * @param {function} onClearLogs
- */
 export default function LogPanel({
   logs,
   selectedCameraId,
   selectedCameraName,
   allCameras,
   cameraStates,
+  unreadCameras,
   onSelectCamera,
   onClearLogs,
 }) {
   const scrollRef = useRef(null);
+  const [panelWidth, setPanelWidth] = useState(380);
+  const isResizing = useRef(false);
+
+  const handleMouseDown = useCallback((e) => {
+    e.preventDefault();
+    isResizing.current = true;
+
+    const onMouseMove = (ev) => {
+      if (!isResizing.current) return;
+      const newWidth = window.innerWidth - ev.clientX;
+      setPanelWidth(Math.max(280, Math.min(800, newWidth)));
+    };
+
+    const onMouseUp = () => {
+      isResizing.current = false;
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }, []);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -32,14 +47,12 @@ export default function LogPanel({
   }, [logs]);
 
   return (
-    <div className="log-panel">
+    <div className="log-panel" style={{ width: panelWidth, minWidth: panelWidth }}>
+      <div className="log-panel__resize-handle" onMouseDown={handleMouseDown} />
+
       {/* Header */}
       <div className="log-panel__header">
-        <span className="log-panel__title">
-          {selectedCameraId
-            ? `LOGS — ${selectedCameraName || selectedCameraId}`
-            : 'LOGS — seleccioná una cámara'}
-        </span>
+        <span className="log-panel__title">LOGS</span>
         {selectedCameraId && logs.length > 0 && (
           <Button variant="ghost" size="sm" onClick={onClearLogs}>
             Limpiar
@@ -47,35 +60,34 @@ export default function LogPanel({
         )}
       </div>
 
+      {/* Camera tabs - arriba del log */}
+      <div className="log-panel__tabs">
+        {allCameras.map((cam) => {
+          const isSelected = selectedCameraId === cam.camera_id;
+          const hasUnread = !isSelected && unreadCameras?.includes(cam.camera_id);
+          return (
+            <button
+              key={cam.camera_id}
+              className={`log-panel__tab ${isSelected ? 'log-panel__tab--selected' : ''} ${hasUnread ? 'log-panel__tab--unread' : ''}`}
+              onClick={() => onSelectCamera(cam.camera_id)}
+            >
+              {cam.camera_id}
+            </button>
+          );
+        })}
+      </div>
+
       {/* Log lines */}
       <div className="log-panel__scroll" ref={scrollRef}>
-        {logs.length === 0 ? (
-          <div className="log-panel__empty">
-            {selectedCameraId ? 'Sin logs todavía...' : 'Seleccioná una cámara para ver logs'}
-          </div>
+        {!selectedCameraId ? (
+          <div className="log-panel__empty">Seleccioná una cámara para ver logs</div>
+        ) : logs.length === 0 ? (
+          <div className="log-panel__empty">Sin logs todavía...</div>
         ) : (
           logs.map((log, i) => (
             <LogLine key={i} log={log} />
           ))
         )}
-      </div>
-
-      {/* Camera tabs */}
-      <div className="log-panel__tabs">
-        {allCameras.map((cam) => {
-          const isActive = !!cameraStates[cam.camera_id]?.active;
-          const isSelected = selectedCameraId === cam.camera_id;
-          return (
-            <button
-              key={cam.camera_id}
-              className={`log-panel__tab ${isSelected ? 'log-panel__tab--selected' : ''}`}
-              onClick={() => onSelectCamera(cam.camera_id)}
-            >
-              {cam.camera_id}
-              {isActive && <span className="log-panel__tab-dot" />}
-            </button>
-          );
-        })}
       </div>
     </div>
   );
