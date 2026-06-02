@@ -17,6 +17,9 @@ export const MESSAGES = {
     brand: 'Monitor AIB',
     settings: 'Configuración',
   },
+  modal: {
+    close: 'Cerrar',
+  },
   sidebar: {
     expand: 'Expandir menú',
     collapse: 'Colapsar menú',
@@ -88,6 +91,8 @@ export const MESSAGES = {
     backendDownMsg: 'No se pudo conectar correctamente con el Backend. Revisá que esté corriendo y la configuración (⚙ → Conexión).\n\nLa cámara se cerró localmente igualmente.',
     activateFailTitle: (id) => `No pude levantar la cámara ${id}`,
     activateFailMsg: (error) => `Intenté iniciarla (y reiniciarla) sin éxito. Hablá con el equipo de desarrollo.\n\nError: ${error || 'desconocido'}`,
+    alreadyRunningTitle: 'Cámara ya en ejecución',
+    alreadyRunningMsg: 'La cámara ya estaba andando en el servidor, se retoma la señal. Revisar su correcto funcionamiento de logs.',
     ok: 'Entendido',
   },
 
@@ -96,6 +101,7 @@ export const MESSAGES = {
     activateStarting: (name) => `Activando "${name}"...`,
     postPluma: 'POST start_pluma_extendida...',
     retry: (label, error) => `No pude iniciar ${label} (${error}). Intento detener y reiniciar la cámara...`,
+    alreadyRunningGroup: (label) => `${label}: ya estaba corriendo en el server — retomo la señal (sin reiniciar ni patchear)`,
     plumaOk: 'Pluma OK — activando opcionales...',
     methodOk: (label) => `+ ${label}`,
     methodError: (label, error) => `Método ${label}: ${error}`,
@@ -147,7 +153,8 @@ export const MESSAGES = {
 
   // ── Página Snapshots ──
   snapshots: {
-    allAlerts: 'Todas las alertas',
+    allAlerts: 'Todas las casuísticas',
+    allLevels: 'Todos los niveles',
     refresh: 'Refrescar',
     loading: 'Cargando…',
     noCameras: '(sin cámaras)',
@@ -155,6 +162,14 @@ export const MESSAGES = {
     emptyTitle: 'Sin snapshots',
     emptyHint: (camera, day) => `No hay capturas para ${camera || 'esta cámara'} el ${day}.`,
     manualTag: ' · manual',
+    cols: {
+      date: 'Fecha',
+      time: 'Hora',
+      camera: 'Cámara',
+      casuistica: 'Casuística',
+      level: 'Level',
+      photo: 'Foto',
+    },
   },
 
   // ── Modal agregar cámara (ad-hoc) ──

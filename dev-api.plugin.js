@@ -55,15 +55,27 @@ const listFiles = (dir) => {
   } catch { return []; }
 };
 
-// risk_14-18-33-919.jpg → { alert:'risk', time:'14:18:33' }
+const LEVEL_RE = /^(warning|warn|critical|crit|error|err|info|danger|alert|alarm|low|medium|high|debug)$/i;
+
+// Parsea el nombre del snapshot. Ej: risk_critical_14-18-33-919.jpg →
+//   { casuistica:'risk', level:'critical', time:'14:18:33' }
+// La hora (HH-MM-SS[-mmm]) va al final; el resto se separa por "_".
+// Si algún token es un nivel conocido (warning/critical/…) se usa como `level`
+// sin importar el orden; el resto forma la casuística.
 function parseSnapName(name) {
   const base = name.replace(JPG_RE, '');
-  const i = base.indexOf('_');
-  const alert = i > 0 ? base.slice(0, i) : 'snapshot';
-  const rest = i > 0 ? base.slice(i + 1) : base;
-  const m = rest.match(/(\d{2})-(\d{2})-(\d{2})/);
-  const time = m ? `${m[1]}:${m[2]}:${m[3]}` : '';
-  return { alert, time };
+  const tm = base.match(/(\d{2})-(\d{2})-(\d{2})(?:-\d{1,3})?$/);
+  const time = tm ? `${tm[1]}:${tm[2]}:${tm[3]}` : '';
+  const prefix = (tm ? base.slice(0, tm.index) : base).replace(/_+$/, '');
+  const tokens = prefix.split('_').filter(Boolean);
+  let level = '';
+  const rest = [];
+  for (const t of tokens) {
+    if (!level && LEVEL_RE.test(t)) level = t.toLowerCase();
+    else rest.push(t);
+  }
+  const casuistica = rest.join(' ') || level || 'snapshot';
+  return { casuistica, level, time };
 }
 
 // ── Logs ──
@@ -135,23 +147,36 @@ function snapDates(camera, root) {
 
 function snapList(camera, date, root) {
   if (!safe(camera) || !DATE_RE.test(date)) return [];
-  const mk = (source, dir) => listFiles(dir)
+  const mk = (source, dir, subdir = '') => listFiles(dir)
     .filter((n) => JPG_RE.test(n))
     .map((name) => {
-      const { alert, time } = parseSnapName(name);
+      const { casuistica, level, time } = parseSnapName(name);
       const q = new URLSearchParams({ source, camera, date, name });
+      if (subdir) q.set('subdir', subdir);
       if (source === 'backend' && root) q.set('root', root);
-      return { name, source, alert, time, date, url: `/api/snapshots/file?${q.toString()}` };
+      return { name, source, subdir, casuistica, level, time, date, url: `/api/snapshots/file?${q.toString()}` };
     });
-  const backend = root ? mk('backend', backendSnapDir(root, camera, date)) : [];
+
+  // Backend: los .jpg viven en <date>/<alert-subdir>/*.jpg → iterar subdirectorios.
+  let backend = [];
+  if (root) {
+    const dateDir = backendSnapDir(root, camera, date);
+    for (const subdir of listDirs(dateDir)) {
+      backend = backend.concat(mk('backend', path.join(dateDir, subdir), subdir));
+    }
+  }
   const manual = mk('manual', path.join(MANUAL_DIR, camera, date));
   return [...backend, ...manual].sort((a, b) => b.time.localeCompare(a.time));
 }
 
-function snapFilePath({ source, camera, date, name, root }) {
+function snapFilePath({ source, camera, date, name, root, subdir = '' }) {
   if (!safe(camera) || !DATE_RE.test(date) || !safe(name) || !JPG_RE.test(name)) return null;
+  if (subdir && !safe(subdir)) return null;
   if (source === 'manual') return path.join(MANUAL_DIR, camera, date, name);
-  if (source === 'backend' && root) return path.join(backendSnapDir(root, camera, date), name);
+  if (source === 'backend' && root) {
+    const base = backendSnapDir(root, camera, date);
+    return subdir ? path.join(base, subdir, name) : path.join(base, name);
+  }
   return null;
 }
 
@@ -204,6 +229,7 @@ export function devApiPlugin() {
         const fp = snapFilePath({
           source: sp.get('source'), camera: sp.get('camera'),
           date: sp.get('date'), name: sp.get('name'), root: sp.get('root') || '',
+          subdir: sp.get('subdir') || '',
         });
         if (!fp || !fs.existsSync(fp)) { res.statusCode = 404; return res.end(); }
         res.setHeader('Content-Type', 'image/jpeg');

@@ -11,6 +11,10 @@ import './CamerasPage.css';
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 const M = MESSAGES;
 
+// El backend ya tiene la cámara corriendo (no hay que reiniciarla ni patchear).
+const isAlreadyRunning = (res) =>
+  /already\s*running|already\s*exists?|ya\s*(est|corr|ejecut|and)|en\s*ejecuci/i.test(res.error || '');
+
 export default function CamerasPage() {
   const {
     settings,
@@ -71,30 +75,44 @@ export default function CamerasPage() {
     addLog(id, 'info', M.log.activateStarting(preset.name || id));
 
     let streamStarted = false;
+    let alreadyRunning = false;
     let lastError = null;
 
-    // Intenta iniciar un procesador. Si falla y todavía no arrancamos nada (el
-    // backend puede tenerla ya corriendo por su cuenta → 400 "already running"),
-    // la damos de baja y reintentamos una vez.
+    // Intenta iniciar un procesador.
+    //  - Si el backend dice "already running" → NO reiniciar ni patchear: se retoma la señal.
+    //  - Si falla por otra cosa y todavía no arrancamos nada → delete + reintento una vez.
     const tryStart = async (startFn, label) => {
       let res = await startFn();
+      if (!res.ok && isAlreadyRunning(res)) {
+        return { res, alreadyRunning: true };
+      }
       if (!res.ok && !streamStarted) {
         addLog(id, 'warn', M.log.retry(label, res.error));
         await cameraService.deleteCamera(id);
         await sleep(500);
         res = await startFn();
       }
-      return res;
+      return { res, alreadyRunning: false };
+    };
+
+    // Adjuntar a un grupo que ya corría en el server (marcar activo + retomar logs/feed).
+    const attachGroup = (group, label) => {
+      alreadyRunning = true;
+      activateGroup(id, group, preset[group]?.config || {});
+      if (!streamStarted) { startLogStream(id); streamStarted = true; }
+      addLog(id, 'warn', M.log.alreadyRunningGroup(label));
     };
 
     try {
       if (pluma) {
         addLog(id, 'info', M.log.postPluma);
-        const res = await tryStart(
+        const { res, alreadyRunning: ar } = await tryStart(
           () => cameraService.startPlumaExtendida(id, preset.rtsp, preset.pluma?.config || {}),
           M.cameraCard.badgePluma,
         );
-        if (res.ok) {
+        if (ar) {
+          attachGroup('pluma', M.cameraCard.badgePluma);
+        } else if (res.ok) {
           activateGroup(id, 'pluma', preset.pluma?.config || {});
           if (!streamStarted) { startLogStream(id); streamStarted = true; }
           addLog(id, 'info', M.log.plumaOk);
@@ -115,11 +133,13 @@ export default function CamerasPage() {
 
       if (collision) {
         addLog(id, 'info', M.log.postCollision);
-        const res = await tryStart(
+        const { res, alreadyRunning: ar } = await tryStart(
           () => cameraService.startCollisionDetection(id, preset.rtsp, preset.collision?.config || {}),
           M.cameraCard.badgeColision,
         );
-        if (res.ok) {
+        if (ar) {
+          attachGroup('collision', M.cameraCard.badgeColision);
+        } else if (res.ok) {
           activateGroup(id, 'collision', preset.collision?.config || {});
           if (!streamStarted) { startLogStream(id); streamStarted = true; }
           addLog(id, 'info', M.log.collisionOk);
@@ -130,13 +150,19 @@ export default function CamerasPage() {
       }
     } finally {
       setActivatingIds(prev => prev.filter(x => x !== id));
-      // Si no arrancó ningún detector, cerramos la card y avisamos al usuario.
       if (!streamStarted) {
+        // No arrancó ningún detector: cerramos la card y avisamos.
         addLog(id, 'error', M.log.activateFail(lastError));
         teardownCamera(id);
         setErrorInfo({
           title: M.errors.activateFailTitle(id),
           message: M.errors.activateFailMsg(lastError),
+        });
+      } else if (alreadyRunning) {
+        // Ya estaba corriendo en el server: se retomó la señal.
+        setErrorInfo({
+          title: M.errors.alreadyRunningTitle,
+          message: M.errors.alreadyRunningMsg,
         });
       }
     }

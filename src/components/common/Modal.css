@@ -11,6 +11,7 @@
 }
 
 .modal-content {
+  position: relative;
   background: var(--surface-2);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-xl);
@@ -23,8 +24,38 @@
   animation: slideUp 200ms ease;
 }
 
+.modal-content--wide {
+  max-width: min(1000px, 92vw);
+}
+
+.modal-close {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+  z-index: 2;
+}
+
+.modal-close:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
 .modal-header {
   margin-bottom: var(--space-5);
+  padding-right: var(--space-6);
 }
 
 .modal-title {

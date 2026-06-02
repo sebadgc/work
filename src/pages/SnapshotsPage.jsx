@@ -14,10 +14,16 @@ const todayKey = () => {
 };
 const fmtDay = (k) => { if (!k) return ''; const [y, m, d] = k.split('-'); return `${d}/${m}/${y}`; };
 
+const LEVEL_COLOR = {
+  critical: 'red', error: 'red', err: 'red', danger: 'red', alarm: 'red', alert: 'red', high: 'red',
+  warning: 'yellow', warn: 'yellow', medium: 'yellow',
+  info: 'blue', low: 'neutral', debug: 'neutral',
+};
+const levelColor = (lvl) => LEVEL_COLOR[(lvl || '').toLowerCase()] || 'neutral';
+
 /**
- * Página de Snapshots: lee las capturas del filesystem por cámara y día.
- *  - backend: <snapshotsRoot>/snapshots/<cam>/<fecha>/*.jpg
- *  - manual:  data/manual-snapshots/<cam>/<fecha>/manual_*.jpg
+ * Página de Snapshots: tabla de capturas (Fecha, Hora, Cámara, Casuística, Level,
+ * miniatura) por cámara y día. Click en una fila → popup con la imagen grande.
  */
 export default function SnapshotsPage() {
   const { settings, cameras, presets } = useAppContext();
@@ -32,7 +38,8 @@ export default function SnapshotsPage() {
   const [camera, setCamera] = useState('');
   const [dates, setDates] = useState([]);
   const [day, setDay] = useState(todayKey());
-  const [alertFilter, setAlertFilter] = useState('all');
+  const [casuFilter, setCasuFilter] = useState('all');
+  const [levelFilter, setLevelFilter] = useState('all');
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [zoom, setZoom] = useState(null);
@@ -68,17 +75,22 @@ export default function SnapshotsPage() {
 
   useEffect(() => { reload(); }, [reload]);
 
-  const alertTypes = useMemo(() => Array.from(new Set(items.map(s => s.alert))).sort(), [items]);
-  const filtered = useMemo(
-    () => items.filter(s => alertFilter === 'all' || s.alert === alertFilter),
-    [items, alertFilter],
+  const casuTypes = useMemo(() => Array.from(new Set(items.map(s => s.casuistica))).sort(), [items]);
+  const levelTypes = useMemo(
+    () => Array.from(new Set(items.map(s => s.level).filter(Boolean))).sort(),
+    [items],
   );
+  const filtered = useMemo(() => items.filter(s =>
+    (casuFilter === 'all' || s.casuistica === casuFilter)
+    && (levelFilter === 'all' || s.level === levelFilter)
+  ), [items, casuFilter, levelFilter]);
+
+  const cols = M.snapshots.cols;
 
   return (
     <div className="snapshots-page">
-      {!root && (
-        <div className="snapshots-page__note">{M.snapshots.noRootNote}</div>
-      )}
+      {!root && <div className="snapshots-page__note">{M.snapshots.noRootNote}</div>}
+
       <div className="snapshots-page__toolbar">
         <select className="snapshots-page__select" value={camera} onChange={e => setCamera(e.target.value)}>
           {cameraIds.length === 0 && <option value="">{M.snapshots.noCameras}</option>}
@@ -90,10 +102,17 @@ export default function SnapshotsPage() {
           {dates.map(d => <option key={d} value={d}>{fmtDay(d)}</option>)}
         </select>
 
-        <select className="snapshots-page__select" value={alertFilter} onChange={e => setAlertFilter(e.target.value)}>
+        <select className="snapshots-page__select" value={casuFilter} onChange={e => setCasuFilter(e.target.value)}>
           <option value="all">{M.snapshots.allAlerts}</option>
-          {alertTypes.map(a => <option key={a} value={a}>{a}</option>)}
+          {casuTypes.map(a => <option key={a} value={a}>{a}</option>)}
         </select>
+
+        {levelTypes.length > 0 && (
+          <select className="snapshots-page__select" value={levelFilter} onChange={e => setLevelFilter(e.target.value)}>
+            <option value="all">{M.snapshots.allLevels}</option>
+            {levelTypes.map(l => <option key={l} value={l}>{l}</option>)}
+          </select>
+        )}
 
         <span className="snapshots-page__count">{filtered.length}</span>
         <div className="snapshots-page__spacer" />
@@ -111,29 +130,42 @@ export default function SnapshotsPage() {
           <p className="snapshots-page__empty-hint">{M.snapshots.emptyHint(camera, fmtDay(day))}</p>
         </div>
       ) : (
-        <div className="snapshots-page__grid">
-          {filtered.map(s => (
-            <button key={`${s.source}-${s.name}`} className="snap-card" onClick={() => setZoom(s)}>
-              <div className="snap-card__thumb">
-                <img src={s.url} alt={s.alert} loading="lazy" />
-                <span className="snap-card__cam">{camera}</span>
-              </div>
-              <div className="snap-card__meta">
-                <Badge color={s.source === 'manual' ? 'neutral' : 'red'}>{s.alert}</Badge>
-                <span className="snap-card__time">{s.time}{s.source === 'manual' ? M.snapshots.manualTag : ''}</span>
-              </div>
-            </button>
-          ))}
+        <div className="snapshots-page__table-wrap">
+          <table className="snap-table">
+            <thead>
+              <tr>
+                <th>{cols.date}</th>
+                <th>{cols.time}</th>
+                <th>{cols.camera}</th>
+                <th>{cols.casuistica}</th>
+                <th>{cols.level}</th>
+                <th>{cols.photo}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(s => (
+                <tr key={`${s.source}-${s.name}`} className="snap-row" onClick={() => setZoom(s)}>
+                  <td>{fmtDay(s.date)}</td>
+                  <td className="snap-mono">{s.time}</td>
+                  <td className="snap-mono">{camera}</td>
+                  <td>{s.casuistica}{s.source === 'manual' ? M.snapshots.manualTag : ''}</td>
+                  <td>{s.level ? <Badge color={levelColor(s.level)}>{s.level}</Badge> : <span className="snap-dash">—</span>}</td>
+                  <td><img className="snap-thumb" src={s.url} alt={s.casuistica} loading="lazy" /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
       {zoom && (
         <Modal
+          size="wide"
           onClose={() => setZoom(null)}
           title={camera}
-          subtitle={`${zoom.alert} — ${fmtDay(day)} ${zoom.time}${zoom.source === 'manual' ? M.snapshots.manualTag : ''}`}
+          subtitle={`${zoom.casuistica}${zoom.level ? ` · ${zoom.level}` : ''} — ${fmtDay(day)} ${zoom.time}${zoom.source === 'manual' ? M.snapshots.manualTag : ''}`}
         >
-          <img className="snap-zoom__img" src={zoom.url} alt={zoom.alert} />
+          <img className="snap-zoom__img" src={zoom.url} alt={zoom.casuistica} />
         </Modal>
       )}
     </div>
