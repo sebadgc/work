@@ -1,67 +1,45 @@
-import { useRef, useEffect } from 'react';
+import { useRef } from 'react';
 import { useWhepStream } from '../../hooks/useWhepStream';
 import './CameraFeed.css';
 
 /**
- * Feed de una cámara. Un único <video> sirve para ambos modos:
- *  - localVideoUrl (blob MP4, modo archivo dev) → reproduce vía .src
- *  - whepUrl (WebRTC/WHEP) → handshake y reproduce vía .srcObject
- *
+ * Feed en vivo de una cámara vía WebRTC/WHEP.
  * El <video> se expone vía `videoRef` (compartido con el padre) para poder
- * capturar frames (snapshots). Prioridad: archivo local sobre WebRTC.
+ * capturar frames (snapshots).
  *
- * @param {string|null} localVideoUrl
- * @param {string|null} whepUrl
+ * @param {string|null} whepUrl - endpoint WHEP resuelto desde el source RTSP
  * @param {React.RefObject} [videoRef] - ref externa al <video> (para snapshots)
  */
-export default function CameraFeed({ localVideoUrl, whepUrl, videoRef: externalRef }) {
+export default function CameraFeed({ whepUrl, videoRef: externalRef }) {
   const internalRef = useRef(null);
   const videoRef = externalRef || internalRef;
-  const isLocal = !!localVideoUrl;
+  const { status } = useWhepStream(whepUrl, { enabled: !!whepUrl, videoRef });
 
-  useEffect(() => {
-    if (isLocal && videoRef.current) {
-      videoRef.current.srcObject = null;
-      videoRef.current.src = localVideoUrl;
-      videoRef.current.play?.().catch(() => {});
-    }
-  }, [isLocal, localVideoUrl, videoRef]);
-
-  const { status } = useWhepStream(whepUrl, { enabled: !isLocal && !!whepUrl, videoRef });
-
-  const hasVideo = isLocal || !!whepUrl;
-  const showLive = !isLocal && !!whepUrl;
-
-  return (
-    <div className={`camera-feed ${hasVideo ? '' : 'camera-feed--placeholder'}`}>
-      {hasVideo ? (
-        <video
-          ref={videoRef}
-          className="camera-feed__video"
-          muted
-          playsInline
-          autoPlay
-          loop={isLocal}
-        />
-      ) : (
+  if (!whepUrl) {
+    return (
+      <div className="camera-feed camera-feed--placeholder">
         <div className="camera-feed__placeholder-inner">
           <span className="camera-feed__ph-icon">◉</span>
           <span className="camera-feed__ph-label">SIN PREVIEW</span>
         </div>
-      )}
+      </div>
+    );
+  }
 
-      {isLocal && <span className="camera-feed__tag camera-feed__tag--file">ARCHIVO</span>}
+  return (
+    <div className="camera-feed">
+      <video ref={videoRef} className="camera-feed__video" muted playsInline autoPlay />
 
-      {showLive && status === 'live' && (
+      {status === 'live' && (
         <span className="camera-feed__tag camera-feed__tag--live">● EN VIVO</span>
       )}
-      {showLive && status === 'connecting' && (
+      {status === 'connecting' && (
         <div className="camera-feed__overlay">
           <span className="camera-feed__spinner">◌</span>
           <span>Conectando…</span>
         </div>
       )}
-      {showLive && status === 'error' && (
+      {status === 'error' && (
         <div className="camera-feed__overlay camera-feed__overlay--error">
           <span>Sin señal</span>
           <small>Revisá el gateway WebRTC en Settings</small>

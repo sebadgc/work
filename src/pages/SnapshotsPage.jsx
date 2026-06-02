@@ -77,7 +77,7 @@ export default function SnapshotsPage() {
           <p className="snapshots-page__empty-title">No hay snapshots</p>
           <p className="snapshots-page__empty-hint">
             Las capturas aparecen cuando el backend reporta una detección.
-            En dev podés usar “⚠ Simular alerta” en una cámara para generar una.
+            También podés usar “Capturar” en una cámara para generar una manualmente.
           </p>
         </div>
       ) : (

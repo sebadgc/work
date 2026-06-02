@@ -142,4 +142,20 @@
   display: flex;
   gap: var(--space-1);
   flex-wrap: wrap;
+  align-items: center;
+}
+
+/* Estado "deteniendo" (mientras responde el backend) */
+.camera-card__stopping {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--status-inactive);
+  font-family: var(--font-mono);
+}
+
+.camera-card__spinner {
+  display: inline-block;
+  animation: spin 1s linear infinite;
 }

@@ -45,8 +45,8 @@ rtsp://host:port/<path>   →   http://<gateway-webrtc>/<path>/whep
 ```
 
 El gateway (`webrtcBaseUrl`) se configura en **Settings (⚙)**; default
-`http://localhost:8889`. En modo dev también se puede usar un **archivo MP4 local**
-(dejá el `Source` vacío al agregar la cámara).
+`http://localhost:8889`. El feed sigue corriendo aunque cambies de página
+(Logs/Snapshots) — las páginas se mantienen montadas.
 
 ## Configuración
 
@@ -87,10 +87,13 @@ Ver detalles y fallback en el `README.md` del proyecto `rtsp-sim`.
 ## Flujo de uso
 
 1. Click en **"+ Agregar cámara"**.
-2. Ingresar `camera_id` y `source` (URL RTSP). En dev, el source vacío usa un MP4 local.
+2. Ingresar `camera_id` y `source` (URL RTSP).
 3. Elegir tipo: **Pluma Extendida** o **Detección de Colisión**.
 4. Configurar parámetros (cooldowns o alarm_id) → POST al backend → la cámara aparece activa.
-5. Para pluma extendida: botón **"+ Método"** para agregar análisis PATCH.
+5. La cámara seleccionada se ve grande arriba; el resto en una grilla debajo. Click en
+   una chica para hacerla principal.
+6. Para pluma extendida: botón **"+ Método"** para agregar análisis PATCH.
+   **Capturar** genera un snapshot manual del frame actual.
 
 No hay GET de cámaras — se crean al hacer POST y viven en el estado local.
 
@@ -102,8 +105,7 @@ src/
 │   ├── app.config.js           # Variables de entorno y defaults
 │   ├── endpoints.config.js     # Endpoints API + PLUMA_PATCH_METHODS
 │   ├── settings.config.js      # Settings de usuario (defaults) + buildWhepUrl()
-│   ├── projects.config.js      # Páginas del sidebar (Cámaras/Logs/Snapshots)
-│   └── dev.config.js
+│   └── projects.config.js      # Páginas del sidebar (Cámaras/Logs/Snapshots)
 │
 ├── api/                        # Cliente HTTP + cameraService
 ├── hooks/
@@ -111,7 +113,6 @@ src/
 │   ├── useLogs.js              # Logs por cámara (persistidos) + ingesta SSE de snapshots
 │   ├── useSnapshots.js         # Store de snapshots (persistido)
 │   ├── useSettings.js          # Settings de usuario (localStorage)
-│   ├── useLocalFiles.js        # Archivos MP4 locales (dev)
 │   └── useWhepStream.js        # Reproductor WebRTC/WHEP (RTCPeerConnection)
 │
 ├── context/AppContext.jsx      # Provider global (envuelve todas las páginas)
@@ -144,11 +145,11 @@ src/
 Si un evento SSE trae `image` / `snapshot` / `frame` (URL o dataURL) junto con
 `alert`/`method`, se agrega automáticamente a la galería de Snapshots.
 
-## Modo desarrollo vs producción
+## Feeds y testeo
 
-- **Desarrollo**: toggle "Modo local" en el header. Feed por WebRTC (con `rtsp-sim`)
-  o por MP4 local. Botón "⚠ Simular alerta" para generar snapshots de prueba.
-- **Producción**: feeds RTSP reales (vía gateway WebRTC), requests al backend.
+Solo RTSP (vía gateway WebRTC) + requests al backend. Para testear sin acceso al
+server real de cámaras, usá el proyecto `rtsp-sim` (ver arriba). El botón
+**Capturar** de cada cámara genera un snapshot manual del frame actual.
 
 ## Agregar una nueva página
 

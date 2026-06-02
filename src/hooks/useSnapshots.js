@@ -6,7 +6,7 @@
  *
  * Fuentes de snapshots:
  *  - Backend vía SSE: eventos de detección con imagen (ver useLogs).
- *  - Demo/local: captura de frame del feed al "Simular alerta" (ver CameraCard).
+ *  - Manual: captura de frame del feed con "Capturar" (ver CameraCard).
  *
  * Nota: si imageUrl es un dataURL (captura local), puede ser pesado; se cap-ea
  * la cantidad y se recorta ante QuotaExceeded.

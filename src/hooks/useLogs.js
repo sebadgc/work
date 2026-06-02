@@ -3,7 +3,7 @@
  *
  * Hook para gestionar logs por cámara.
  * Se conecta al backend vía SSE (Server-Sent Events) en GET /{camera_id}/logs.
- * En modo dev sin backend, solo muestra logs de acciones del frontend.
+ * Sin backend conectado, solo muestra logs de acciones del frontend.
  *
  * Los logs se persisten en localStorage (cap MAX_LOG_LINES por cámara) y NO se
  * borran al detener la cámara, para alimentar la página histórica de Logs.

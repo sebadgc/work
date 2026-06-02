@@ -1,6 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { cameraService } from '../api';
-import { ENV } from '../config/app.config';
 import { buildWhepUrl } from '../config';
 import { useAppContext } from '../context';
 import { Button } from '../components/common';
@@ -11,47 +10,46 @@ import './CamerasPage.css';
 
 export default function CamerasPage() {
   const {
-    devMode, settings,
+    settings,
     cameras, registerCamera, unregisterCamera,
     cameraStates, activateCamera, deactivateCamera, addMethod, removeMethod,
     logsByCamera, addLog, clearLogs,
     startLogStream, stopLogStream,
-    fileInputRef, handleFileInput, getObjectUrl, requestFile,
     addSnapshot,
   } = useAppContext();
 
   const [selectedCameraId, setSelectedCameraId] = useState(null);
   const [unreadCameras, setUnreadCameras] = useState([]);
+  const [stoppingIds, setStoppingIds] = useState([]);
   const prevLogCounts = useRef({});
   const [showAddModal, setShowAddModal] = useState(false);
   const [patchModal, setPatchModal] = useState(null);
 
-  // Wrapper para seleccionar cámara y limpiar su estado "no leído"
+  // Wrapper para seleccionar cámara (la enfocada) y limpiar su "no leído".
   const selectCamera = useCallback((camId) => {
     setSelectedCameraId(camId);
     setUnreadCameras(prev => prev.filter(id => id !== camId));
   }, []);
 
-  // ── Agregar cámara ──
-  const handleAddCamera = useCallback(async ({ cameraId, source, processorType, config }) => {
-    let finalSource = source;
-
-    // En dev SIN source RTSP: usar un archivo local (preview por blob + path al backend).
-    // Si hay source (rtsp://...), se usa el flujo "real": preview por WebRTC.
-    if (devMode && !source) {
-      const file = await requestFile(cameraId);
-      if (!file) return;
-      finalSource = `${ENV.DEV_VIDEO_DIR}/${file.name}`;
+  // Mantener siempre una cámara enfocada (la primera) y reparar si la actual se va.
+  useEffect(() => {
+    if (cameras.length === 0) {
+      if (selectedCameraId !== null) setSelectedCameraId(null);
+    } else if (!cameras.some(c => c.camera_id === selectedCameraId)) {
+      setSelectedCameraId(cameras[0].camera_id);
     }
+  }, [cameras, selectedCameraId]);
 
+  // ── Agregar cámara (siempre RTSP) ──
+  const handleAddCamera = useCallback(async ({ cameraId, source, processorType, config }) => {
     const label = processorType === 'pluma_extendida' ? 'pluma extendida' : 'detección de colisión';
-    addLog(cameraId, 'info', `Iniciando ${label} — source: ${finalSource}`);
+    addLog(cameraId, 'info', `Iniciando ${label} — source: ${source}`);
 
     let res;
     if (processorType === 'pluma_extendida') {
-      res = await cameraService.startPlumaExtendida(cameraId, finalSource, config);
+      res = await cameraService.startPlumaExtendida(cameraId, source, config);
     } else {
-      res = await cameraService.startCollisionDetection(cameraId, finalSource, config);
+      res = await cameraService.startCollisionDetection(cameraId, source, config);
     }
     if (!res.ok) {
       addLog(cameraId, 'error', `Error del backend: ${res.error}`);
@@ -60,7 +58,7 @@ export default function CamerasPage() {
     }
     addLog(cameraId, 'info', 'Backend respondió OK — procesador iniciado');
 
-    registerCamera(cameraId, finalSource, cameraId);
+    registerCamera(cameraId, source, cameraId);
     activateCamera(cameraId, processorType, config);
     setSelectedCameraId(cameraId);
 
@@ -68,22 +66,25 @@ export default function CamerasPage() {
     addLog(cameraId, 'info', 'Conectado al stream de logs del backend');
 
     setShowAddModal(false);
-  }, [devMode, addLog, registerCamera, activateCamera, startLogStream, requestFile]);
+  }, [addLog, registerCamera, activateCamera, startLogStream]);
 
-  // ── Detener cámara ──
+  // ── Detener cámara (con estado "deteniendo" mientras responde el backend) ──
   const handleDelete = useCallback(async (cameraId) => {
+    setStoppingIds(prev => prev.includes(cameraId) ? prev : [...prev, cameraId]);
     addLog(cameraId, 'info', 'Enviando DELETE...');
-    stopLogStream(cameraId);
 
     const res = await cameraService.deleteCamera(cameraId);
     if (!res.ok) {
       addLog(cameraId, 'error', `Error al detener: ${res.error}`);
+      setStoppingIds(prev => prev.filter(id => id !== cameraId));
       return;
     }
     addLog(cameraId, 'info', 'Backend respondió OK — procesador detenido');
 
+    stopLogStream(cameraId);
     deactivateCamera(cameraId);
     unregisterCamera(cameraId);
+    setStoppingIds(prev => prev.filter(id => id !== cameraId));
   }, [addLog, deactivateCamera, unregisterCamera, stopLogStream]);
 
   // ── Activar método PATCH ──
@@ -117,10 +118,10 @@ export default function CamerasPage() {
     setPatchModal(null);
   }, [addLog, removeMethod]);
 
-  // ── Simular alerta (demo): captura un frame y genera un snapshot + log ──
-  const handleSimulateAlert = useCallback((cameraId, imageUrl) => {
-    addLog(cameraId, 'detection', '⚠ Alerta simulada — snapshot capturado');
-    addSnapshot({ camera_id: cameraId, alert: 'detección simulada', imageUrl });
+  // ── Capturar snapshot manual del frame actual ──
+  const handleCapture = useCallback((cameraId, imageUrl) => {
+    addLog(cameraId, 'detection', '⚑ Snapshot capturado');
+    addSnapshot({ camera_id: cameraId, alert: 'captura manual', imageUrl });
   }, [addLog, addSnapshot]);
 
   // Detectar logs nuevos en cámaras que no estamos mirando
@@ -141,14 +142,6 @@ export default function CamerasPage() {
 
   return (
     <div className="cameras-page">
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="video/mp4,video/*"
-        style={{ display: 'none' }}
-        onChange={handleFileInput}
-      />
-
       <div className="cameras-page__main">
         <div className="cameras-page__toolbar">
           <Button variant="primary" size="md" onClick={() => setShowAddModal(true)}>
@@ -166,24 +159,23 @@ export default function CamerasPage() {
             <div className="cameras-page__empty-icon">◉</div>
             <p className="cameras-page__empty-title">No hay cámaras activas</p>
             <p className="cameras-page__empty-hint">
-              Presioná "Agregar cámara" para iniciar un procesador con su camera_id y fuente.
+              Presioná "Agregar cámara" para iniciar un procesador con su camera_id y su URL RTSP.
             </p>
           </div>
         ) : (
-          <CameraGrid>
+          <CameraGrid showDivider={cameras.length > 1}>
             {cameras.map((cam) => (
               <CameraCard
                 key={cam.camera_id}
                 camera={cam}
                 state={cameraStates[cam.camera_id]}
                 isSelected={selectedCameraId === cam.camera_id}
-                devMode={devMode}
-                localVideoUrl={getObjectUrl(cam.camera_id)}
+                isStopping={stoppingIds.includes(cam.camera_id)}
                 whepUrl={buildWhepUrl(settings.webrtcBaseUrl, cam.source)}
                 onSelect={selectCamera}
                 onDelete={handleDelete}
                 onPatchMethod={(id) => setPatchModal(id)}
-                onSimulateAlert={handleSimulateAlert}
+                onCapture={handleCapture}
               />
             ))}
           </CameraGrid>
@@ -203,7 +195,6 @@ export default function CamerasPage() {
 
       {showAddModal && (
         <AddCameraModal
-          devMode={devMode}
           existingCameraIds={existingIds}
           onConfirm={handleAddCamera}
           onClose={() => setShowAddModal(false)}

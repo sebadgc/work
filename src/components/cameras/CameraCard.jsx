@@ -6,31 +6,28 @@ import './CameraCard.css';
 
 /**
  * Card individual de cámara activa.
- * Muestra el feed en vivo (WebRTC) o el archivo local (dev), estado, métodos
- * activos, y controles.
+ * Muestra el feed en vivo (WebRTC), estado, métodos activos, y controles.
  *
  * @param {object} camera - { camera_id, name, source }
  * @param {object|null} state - estado activo desde useCameraState
- * @param {boolean} isSelected
- * @param {boolean} devMode
- * @param {string|null} localVideoUrl - URL de objeto local (MP4 dev)
- * @param {string|null} whepUrl - endpoint WebRTC/WHEP para el feed en vivo
+ * @param {boolean} isSelected - es la cámara enfocada (grande)
+ * @param {boolean} isStopping - se está deteniendo (esperando al backend)
+ * @param {string|null} whepUrl - endpoint WebRTC/WHEP del feed en vivo
  * @param {function} onSelect
  * @param {function} onDelete
  * @param {function} onPatchMethod
- * @param {function} onSimulateAlert - (cameraId, imageDataUrl) — demo de snapshot
+ * @param {function} onCapture - (cameraId, imageDataUrl) — snapshot manual
  */
 export default function CameraCard({
   camera,
   state,
   isSelected,
-  devMode,
-  localVideoUrl,
+  isStopping,
   whepUrl,
   onSelect,
   onDelete,
   onPatchMethod,
-  onSimulateAlert,
+  onCapture,
 }) {
   const feedVideoRef = useRef(null);
   const isPluma = state?.mode === 'pluma_extendida';
@@ -40,10 +37,9 @@ export default function CameraCard({
     return method?.label || id;
   });
 
-  const handleSimulate = (e) => {
+  const handleCapture = (e) => {
     e.stopPropagation();
-    const imageUrl = captureFrame(feedVideoRef.current);
-    onSimulateAlert?.(camera.camera_id, imageUrl);
+    onCapture?.(camera.camera_id, captureFrame(feedVideoRef.current));
   };
 
   return (
@@ -53,7 +49,7 @@ export default function CameraCard({
     >
       {/* Preview */}
       <div className="camera-card__preview">
-        <CameraFeed localVideoUrl={localVideoUrl} whepUrl={whepUrl} videoRef={feedVideoRef} />
+        <CameraFeed whepUrl={whepUrl} videoRef={feedVideoRef} />
 
         {/* Status overlay */}
         <div className="camera-card__status-overlay">
@@ -84,23 +80,29 @@ export default function CameraCard({
           )}
         </div>
         <div className="camera-card__source" title={camera.source}>
-          {localVideoUrl ? '⬡ archivo local' : camera.source}
+          {camera.source}
         </div>
 
         {/* Actions */}
         <div className="camera-card__actions">
-          <Button variant="danger" size="sm" onClick={(e) => { e.stopPropagation(); onDelete(camera.camera_id); }}>
-            Detener
-          </Button>
-          {isPluma && (
-            <Button variant="default" size="sm" onClick={(e) => { e.stopPropagation(); onPatchMethod(camera.camera_id); }}>
-              + Método
-            </Button>
-          )}
-          {devMode && (
-            <Button variant="ghost" size="sm" onClick={handleSimulate}>
-              ⚠ Simular alerta
-            </Button>
+          {isStopping ? (
+            <span className="camera-card__stopping">
+              <span className="camera-card__spinner">◌</span> Deteniendo…
+            </span>
+          ) : (
+            <>
+              <Button variant="danger" size="sm" onClick={(e) => { e.stopPropagation(); onDelete(camera.camera_id); }}>
+                Detener
+              </Button>
+              {isPluma && (
+                <Button variant="default" size="sm" onClick={(e) => { e.stopPropagation(); onPatchMethod(camera.camera_id); }}>
+                  + Método
+                </Button>
+              )}
+              <Button variant="ghost" size="sm" onClick={handleCapture}>
+                Capturar
+              </Button>
+            </>
           )}
         </div>
       </div>

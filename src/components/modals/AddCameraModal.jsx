@@ -10,7 +10,7 @@ import { Modal, ModalFooter, Button, FormField } from '../common';
  * Collision config requiere: collision_alarm_id + not_detected_cooldown + detected_cooldown
  * Pluma config requiere: not_detected_cooldown + detected_cooldown
  */
-export default function AddCameraModal({ devMode, existingCameraIds, onConfirm, onClose }) {
+export default function AddCameraModal({ existingCameraIds, onConfirm, onClose }) {
   const [step, setStep] = useState(1);
 
   // Step 1
@@ -26,7 +26,7 @@ export default function AddCameraModal({ devMode, existingCameraIds, onConfirm, 
   const [collisionAlarmId, setCollisionAlarmId] = useState('');
 
   const idTaken = existingCameraIds.includes(cameraId.trim());
-  const step1Valid = cameraId.trim() && (devMode || source.trim()) && !idTaken;
+  const step1Valid = cameraId.trim() && source.trim() && !idTaken;
 
   const handleNext = () => setStep(2);
   const handleBack = () => setStep(1);
@@ -70,11 +70,9 @@ export default function AddCameraModal({ devMode, existingCameraIds, onConfirm, 
           value={source}
           onChange={setSource}
           type="text"
-          required={!devMode}
+          required
           placeholder="rtsp://ip:port/id/live"
-          hint={devMode
-            ? 'URL RTSP (ej: rtsp://localhost:8554/cam-test-01). Dejalo vacío para elegir un archivo MP4 local.'
-            : 'URL del feed RTSP de la cámara'}
+          hint="URL del feed RTSP de la cámara"
         />
         <FormField
           label="Tipo de procesamiento"

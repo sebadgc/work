@@ -1,6 +1,14 @@
 import './CameraGrid.css';
 
-export default function CameraGrid({ children, loading, selectedId }) {
+/**
+ * Grilla de cámaras. La cámara seleccionada (`.camera-card--selected`) se
+ * muestra grande y centrada arriba; el resto forma una grilla debajo, separada
+ * por una línea. Todo en un único contenedor (solo cambian clases CSS) para que
+ * promover una cámara NO desmonte su feed de video.
+ *
+ * @param {boolean} showDivider - mostrar la línea entre la principal y la grilla
+ */
+export default function CameraGrid({ children, loading, showDivider }) {
   if (loading) {
     return (
       <div className="camera-grid__loading">
@@ -10,25 +18,10 @@ export default function CameraGrid({ children, loading, selectedId }) {
     );
   }
 
-  const childArray = Array.isArray(children) ? children : [children];
-  const selected = childArray.find(c => c?.key === selectedId);
-  const others = childArray.filter(c => c?.key !== selectedId);
-
   return (
     <div className="camera-grid">
-      {selected && (
-        <div className="camera-grid__focus">
-          {selected}
-        </div>
-      )}
-      {selected && others.length > 0 && (
-        <hr className="camera-grid__divider" />
-      )}
-      {others.length > 0 && (
-        <div className="camera-grid__rest">
-          {others}
-        </div>
-      )}
+      {children}
+      {showDivider && <div className="camera-grid__divider" aria-hidden="true" />}
     </div>
   );
 }

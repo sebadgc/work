@@ -1,23 +1,15 @@
 import { useState } from 'react';
-import { Badge } from '../common';
-import { isDev } from '../../config';
 import { useAppContext } from '../../context';
 import { SettingsModal } from '../modals';
 import './AppHeader.css';
 
 /**
  * Header global de la plataforma.
- * Brand + nombre de la página activa + toggle dev + acceso a Settings.
+ * Brand + nombre de la página activa + acceso a Settings.
  *
  * @param {string} activeProjectLabel - nombre de la página actualmente seleccionada
- * @param {boolean} devMode
- * @param {function} onToggleDevMode
  */
-export default function AppHeader({
-  activeProjectLabel,
-  devMode,
-  onToggleDevMode,
-}) {
+export default function AppHeader({ activeProjectLabel }) {
   const { settings, updateSettings, resetSettings } = useAppContext();
   const [showSettings, setShowSettings] = useState(false);
 
@@ -34,17 +26,6 @@ export default function AppHeader({
       </div>
 
       <div className="app-header__right">
-        {devMode && <Badge color="accent">DEV</Badge>}
-        {isDev() && (
-          <label className="app-header__dev-toggle">
-            <input
-              type="checkbox"
-              checked={devMode}
-              onChange={(e) => onToggleDevMode(e.target.checked)}
-            />
-            <span>Modo local</span>
-          </label>
-        )}
         <button
           className="app-header__icon-btn"
           title="Configuración"

@@ -68,6 +68,14 @@ input:focus, button:focus-visible {
   min-height: 0;
 }
 
+/* Cada página ocupa todo el contenido. Se muestran/ocultan con `display`
+   (inline) para mantenerlas montadas y que el feed de video no se corte. */
+.app-page {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
 .app-loading {
   display: flex;
   align-items: center;
