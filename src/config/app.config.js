@@ -18,6 +18,10 @@ const ENV = {
   
   // Máximo de líneas de log en memoria por cámara
   MAX_LOG_LINES: Number(import.meta.env?.VITE_MAX_LOG_LINES) || 500,
+
+  // Carpeta (en el server del backend) donde viven los videos de prueba en dev.
+  // Se usa para armar el `source` cuando se elige un archivo local.
+  DEV_VIDEO_DIR: import.meta.env?.VITE_DEV_VIDEO_DIR || './videos',
 };
 
 const isDev = () => ENV.MODE === 'development';

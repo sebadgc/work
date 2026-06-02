@@ -65,17 +65,17 @@ export default function AddCameraModal({ devMode, existingCameraIds, onConfirm, 
           placeholder="ej: cam-pluma-01"
           hint={idTaken ? '⚠ Este ID ya está en uso' : 'Identificador único de la cámara en el backend'}
         />
-        {!devMode && (
-          <FormField
-            label="Source (RTSP URL)"
-            value={source}
-            onChange={setSource}
-            type="text"
-            required
-            placeholder="rtsp://ip:port/id/live"
-            hint="URL del feed RTSP de la cámara"
-          />
-        )}
+        <FormField
+          label="Source (RTSP URL)"
+          value={source}
+          onChange={setSource}
+          type="text"
+          required={!devMode}
+          placeholder="rtsp://ip:port/id/live"
+          hint={devMode
+            ? 'URL RTSP (ej: rtsp://localhost:8554/cam-test-01). Dejalo vacío para elegir un archivo MP4 local.'
+            : 'URL del feed RTSP de la cámara'}
+        />
         <FormField
           label="Tipo de procesamiento"
           value={processorType}

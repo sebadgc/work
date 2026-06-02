@@ -1,21 +1,33 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import { useCameraState } from '../hooks/useCameraState';
 import { useLogs } from '../hooks/useLogs';
 import { useLocalFiles } from '../hooks/useLocalFiles';
+import { useSettings } from '../hooks/useSettings';
+import { useSnapshots } from '../hooks/useSnapshots';
+import apiClient from '../api/apiClient';
 
 const AppContext = createContext(null);
 
 /**
- * Provider para el módulo de seguridad.
- * Recibe devMode desde arriba (gestionado a nivel App global).
+ * Provider global de la plataforma. Envuelve TODAS las páginas (Cámaras, Logs,
+ * Snapshots) para que compartan el mismo estado: cámaras, logs, snapshots y
+ * settings. `devMode` se recibe desde App (toggle del header).
  */
-export function AppProvider({ children, initialDevMode = false }) {
-  const [devMode] = useState(initialDevMode);
+export function AppProvider({ children, devMode = false }) {
   const [cameras, setCameras] = useState([]);
 
+  const settingsApi = useSettings();
+  const snapshots = useSnapshots();
   const cameraState = useCameraState();
-  const logs = useLogs();
+  const logs = useLogs({ onSnapshot: snapshots.addSnapshot });
   const localFiles = useLocalFiles();
+
+  // Mantener el apiClient sincronizado con la URL de settings.
+  useEffect(() => {
+    if (settingsApi.settings.apiBaseUrl) {
+      apiClient.setBaseUrl(settingsApi.settings.apiBaseUrl);
+    }
+  }, [settingsApi.settings.apiBaseUrl]);
 
   const registerCamera = (cameraId, source, label) => {
     setCameras(prev => {
@@ -33,8 +45,10 @@ export function AppProvider({ children, initialDevMode = false }) {
     cameras,
     registerCamera,
     unregisterCamera,
+    ...settingsApi,
     ...cameraState,
     ...logs,
+    ...snapshots,
     ...localFiles,
   };
 

@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { cameraService } from '../api';
 import { ENV } from '../config/app.config';
+import { buildWhepUrl } from '../config';
 import { useAppContext } from '../context';
 import { Button } from '../components/common';
 import { CameraCard, CameraGrid } from '../components/cameras';
@@ -10,12 +11,13 @@ import './CamerasPage.css';
 
 export default function CamerasPage() {
   const {
-    devMode,
+    devMode, settings,
     cameras, registerCamera, unregisterCamera,
     cameraStates, activateCamera, deactivateCamera, addMethod, removeMethod,
     logsByCamera, addLog, clearLogs,
     startLogStream, stopLogStream,
     fileInputRef, handleFileInput, getObjectUrl, requestFile,
+    addSnapshot,
   } = useAppContext();
 
   const [selectedCameraId, setSelectedCameraId] = useState(null);
@@ -34,7 +36,9 @@ export default function CamerasPage() {
   const handleAddCamera = useCallback(async ({ cameraId, source, processorType, config }) => {
     let finalSource = source;
 
-    if (devMode) {
+    // En dev SIN source RTSP: usar un archivo local (preview por blob + path al backend).
+    // Si hay source (rtsp://...), se usa el flujo "real": preview por WebRTC.
+    if (devMode && !source) {
       const file = await requestFile(cameraId);
       if (!file) return;
       finalSource = `${ENV.DEV_VIDEO_DIR}/${file.name}`;
@@ -113,6 +117,12 @@ export default function CamerasPage() {
     setPatchModal(null);
   }, [addLog, removeMethod]);
 
+  // ── Simular alerta (demo): captura un frame y genera un snapshot + log ──
+  const handleSimulateAlert = useCallback((cameraId, imageUrl) => {
+    addLog(cameraId, 'detection', '⚠ Alerta simulada — snapshot capturado');
+    addSnapshot({ camera_id: cameraId, alert: 'detección simulada', imageUrl });
+  }, [addLog, addSnapshot]);
+
   // Detectar logs nuevos en cámaras que no estamos mirando
   useEffect(() => {
     Object.entries(logsByCamera).forEach(([camId, logs]) => {
@@ -169,9 +179,11 @@ export default function CamerasPage() {
                 isSelected={selectedCameraId === cam.camera_id}
                 devMode={devMode}
                 localVideoUrl={getObjectUrl(cam.camera_id)}
+                whepUrl={buildWhepUrl(settings.webrtcBaseUrl, cam.source)}
                 onSelect={selectCamera}
                 onDelete={handleDelete}
                 onPatchMethod={(id) => setPatchModal(id)}
+                onSimulateAlert={handleSimulateAlert}
               />
             ))}
           </CameraGrid>

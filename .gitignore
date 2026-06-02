@@ -1,0 +1,11 @@
+# Build
+dist/
+
+# Entorno
+.env
+.env.local
+*.local
+
+# Logs
+*.log
+npm-debug.log*

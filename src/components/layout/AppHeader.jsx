@@ -1,12 +1,15 @@
+import { useState } from 'react';
 import { Badge } from '../common';
 import { isDev } from '../../config';
+import { useAppContext } from '../../context';
+import { SettingsModal } from '../modals';
 import './AppHeader.css';
 
 /**
  * Header global de la plataforma.
- * Solo brand + nombre del proyecto activo + dev toggle.
+ * Brand + nombre de la página activa + toggle dev + acceso a Settings.
  *
- * @param {string} activeProjectLabel - nombre del proyecto actualmente seleccionado
+ * @param {string} activeProjectLabel - nombre de la página actualmente seleccionada
  * @param {boolean} devMode
  * @param {function} onToggleDevMode
  */
@@ -15,13 +18,16 @@ export default function AppHeader({
   devMode,
   onToggleDevMode,
 }) {
+  const { settings, updateSettings, resetSettings } = useAppContext();
+  const [showSettings, setShowSettings] = useState(false);
+
   return (
     <header className="app-header">
       <div className="app-header__left">
         <div className="app-header__brand">
           <div className="app-header__logo">◈</div>
           <div className="app-header__brand-text">
-            <h1 className="app-header__title">Vision Control</h1>
+            <h1 className="app-header__title">Monitor AIB</h1>
             <span className="app-header__subtitle">{activeProjectLabel}</span>
           </div>
         </div>
@@ -39,7 +45,24 @@ export default function AppHeader({
             <span>Modo local</span>
           </label>
         )}
+        <button
+          className="app-header__icon-btn"
+          title="Configuración"
+          aria-label="Configuración"
+          onClick={() => setShowSettings(true)}
+        >
+          ⚙
+        </button>
       </div>
+
+      {showSettings && (
+        <SettingsModal
+          settings={settings}
+          onSave={updateSettings}
+          onReset={resetSettings}
+          onClose={() => setShowSettings(false)}
+        />
+      )}
     </header>
   );
 }

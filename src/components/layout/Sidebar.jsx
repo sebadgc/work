@@ -42,7 +42,7 @@ export default function Sidebar({ projects, activeProjectId, onSelectProject }) 
       {!collapsed && (
         <div className="sidebar__footer">
           <span className="sidebar__footer-text">
-            {projects.length} proyecto{projects.length !== 1 ? 's' : ''}
+            {projects.length} página{projects.length !== 1 ? 's' : ''}
           </span>
         </div>
       )}
