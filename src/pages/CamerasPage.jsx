@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { cameraService } from '../api';
 import { buildWhepUrl, PLUMA_PATCH_METHODS } from '../config';
 import { useAppContext } from '../context';
-import { Button, ConfirmModal, StatusDot } from '../components/common';
+import { Button, ConfirmModal, StatusDot, Modal, ModalFooter } from '../components/common';
 import { CameraCard, CameraGrid } from '../components/cameras';
 import { LogPanel } from '../components/logs';
 import { AddCameraModal, PatchMethodModal, ActivateCameraModal } from '../components/modals';
@@ -30,6 +30,7 @@ export default function CamerasPage() {
   const [patchModal, setPatchModal] = useState(null);
   const [activatePreset, setActivatePreset] = useState(null);
   const [confirmStop, setConfirmStop] = useState(null);
+  const [errorInfo, setErrorInfo] = useState(null);
 
   const selectCamera = useCallback((camId) => {
     setSelectedCameraId(camId);
@@ -66,10 +67,29 @@ export default function CamerasPage() {
     addLog(id, 'info', `Activando "${preset.name || id}"...`);
 
     let streamStarted = false;
+    let lastError = null;
+
+    // Intenta iniciar un procesador. Si falla y todavía no arrancamos nada (el
+    // backend puede tenerla ya corriendo por su cuenta → 400 "already running"),
+    // la damos de baja y reintentamos una vez.
+    const tryStart = async (startFn, label) => {
+      let res = await startFn();
+      if (!res.ok && !streamStarted) {
+        addLog(id, 'warn', `No pude iniciar ${label} (${res.error}). Intento detener y reiniciar la cámara...`);
+        await cameraService.deleteCamera(id);
+        await sleep(500);
+        res = await startFn();
+      }
+      return res;
+    };
+
     try {
       if (pluma) {
         addLog(id, 'info', 'POST start_pluma_extendida...');
-        const res = await cameraService.startPlumaExtendida(id, preset.rtsp, preset.pluma?.config || {});
+        const res = await tryStart(
+          () => cameraService.startPlumaExtendida(id, preset.rtsp, preset.pluma?.config || {}),
+          'pluma',
+        );
         if (res.ok) {
           activateGroup(id, 'pluma', preset.pluma?.config || {});
           if (!streamStarted) { startLogStream(id); streamStarted = true; }
@@ -84,27 +104,36 @@ export default function CamerasPage() {
             await sleep(150);
           }
         } else {
+          lastError = res.error;
           addLog(id, 'error', `Pluma error: ${res.error}`);
         }
       }
 
       if (collision) {
         addLog(id, 'info', 'POST start_collision_detection...');
-        const res = await cameraService.startCollisionDetection(id, preset.rtsp, preset.collision?.config || {});
+        const res = await tryStart(
+          () => cameraService.startCollisionDetection(id, preset.rtsp, preset.collision?.config || {}),
+          'colisión',
+        );
         if (res.ok) {
           activateGroup(id, 'collision', preset.collision?.config || {});
           if (!streamStarted) { startLogStream(id); streamStarted = true; }
           addLog(id, 'info', 'Colisión OK');
         } else {
+          lastError = res.error;
           addLog(id, 'error', `Colisión error: ${res.error}`);
         }
       }
     } finally {
       setActivatingIds(prev => prev.filter(x => x !== id));
-      // Si no arrancó ningún detector, no dejamos una card fantasma con el feed.
+      // Si no arrancó ningún detector, cerramos la card y avisamos al usuario.
       if (!streamStarted) {
-        addLog(id, 'error', 'No se pudo iniciar ningún detector — cerrando cámara');
+        addLog(id, 'error', `No pude levantar la cámara. Error: ${lastError || 'desconocido'}`);
         teardownCamera(id);
+        setErrorInfo({
+          title: `No pude levantar la cámara ${id}`,
+          message: `Intenté iniciarla (y reiniciarla) sin éxito. Hablá con el equipo de desarrollo.\n\nError: ${lastError || 'desconocido'}`,
+        });
       }
     }
   }, [cameras, registerCamera, activateGroup, addMethod, addLog, startLogStream, teardownCamera]);
@@ -239,8 +268,8 @@ export default function CamerasPage() {
                   title={`${p.name || p.id} — ${on ? 'encendida' : 'apagada'}\n${p.rtsp}`}
                   onClick={() => (on ? selectCamera(p.id) : setActivatePreset(p))}
                 >
-                  <span className="cam-pill__name">{p.name || p.id}</span>
                   <StatusDot status={on ? 'active' : 'inactive'} size="md" />
+                  <span className="cam-pill__name">{p.name || p.id}</span>
                 </button>
               );
             })}
@@ -320,6 +349,16 @@ export default function CamerasPage() {
           onConfirm={() => handleDelete(confirmStop)}
           onClose={() => setConfirmStop(null)}
         />
+      )}
+      {errorInfo && (
+        <Modal onClose={() => setErrorInfo(null)} title={errorInfo.title}>
+          <p style={{ color: 'var(--text-secondary)', lineHeight: 1.5, whiteSpace: 'pre-line', margin: 'var(--space-2) 0 var(--space-4)' }}>
+            {errorInfo.message}
+          </p>
+          <ModalFooter>
+            <Button variant="primary" size="md" onClick={() => setErrorInfo(null)}>Entendido</Button>
+          </ModalFooter>
+        </Modal>
       )}
     </div>
   );
