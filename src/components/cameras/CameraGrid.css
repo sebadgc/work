@@ -19,9 +19,10 @@
   order: 3;
 }
 
-/* En las chicas, ocultar source y acciones (se opera desde la principal). */
+/* En las chicas, ocultar source, acciones y chips de métodos (se opera desde la principal). */
 .camera-grid > .camera-card:not(.camera-card--selected) .camera-card__source,
-.camera-grid > .camera-card:not(.camera-card--selected) .camera-card__actions {
+.camera-grid > .camera-card:not(.camera-card--selected) .camera-card__actions,
+.camera-grid > .camera-card:not(.camera-card--selected) .camera-card__methods-overlay {
   display: none;
 }
 

@@ -11,9 +11,11 @@ import './CamerasPage.css';
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 const M = MESSAGES;
 
-// El backend ya tiene la cámara corriendo (no hay que reiniciarla ni patchear).
+// El backend dice que la cámara YA estaba corriendo (frase explícita; regex acotado
+// para no dar falsos positivos con otros errores).
 const isAlreadyRunning = (res) =>
-  /already\s*running|already\s*exists?|ya\s*(est|corr|ejecut|and)|en\s*ejecuci/i.test(res.error || '');
+  /already[\s_-]*running|already[\s_-]*active|ya\s+est[áa]\s+(corriendo|activa|andando|en\s+ejecuci[óo]n)|en\s+ejecuci[óo]n/i
+    .test(res.error || '');
 
 export default function CamerasPage() {
   const {
@@ -87,10 +89,18 @@ export default function CamerasPage() {
     //  - Si falla por otra cosa y todavía no arrancamos nada → delete + reintento una vez.
     const tryStart = async (startFn, label) => {
       let res = await startFn();
-      if (!res.ok && isAlreadyRunning(res)) {
+      if (res.ok) return { res, alreadyRunning: false };
+
+      if (isAlreadyRunning(res)) {
+        // Si ya iniciamos algo en ESTA activación, el "already running" es porque
+        // nosotros levantamos la cámara → lo tomamos como OK (sin popup ni warn).
+        if (streamStarted) return { res: { ok: true }, alreadyRunning: false };
+        // Nada iniciado todavía → la cámara YA estaba corriendo de antes.
         return { res, alreadyRunning: true };
       }
-      if (!res.ok && !streamStarted) {
+
+      // Otro error y todavía no arrancamos nada → detener y reintentar una vez.
+      if (!streamStarted) {
         addLog(id, 'warn', M.log.retry(label, res.error));
         await cameraService.deleteCamera(id);
         await sleep(500);
@@ -213,7 +223,7 @@ export default function CamerasPage() {
 
     // Si la cámara ya no existe en el backend, reconciliamos: cerramos igual el feed local.
     const notFound = res.status === 404
-      || /not\s*found|no\s*existe|no\s*encontrad|not\s*exist|unknown/i.test(res.error || '');
+      || /not\s*found|no\s*existe|no\s*encontrad|not\s*exist/i.test(res.error || '');
     if (notFound) {
       addLog(cameraId, 'warn', M.log.delNotFound(res.error));
       teardownCamera(cameraId);

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { MESSAGES } from '../../config';
+import { useAppContext } from '../../context';
 import './Sidebar.css';
 
 /**
@@ -11,6 +12,15 @@ import './Sidebar.css';
  */
 export default function Sidebar({ projects, activeProjectId, onSelectProject }) {
   const [collapsed, setCollapsed] = useState(false);
+  const { unreadByCamera } = useAppContext();
+
+  // Sumatoria de logs sin leer (todas las cámaras) → badge en el módulo Logs.
+  const totals = Object.values(unreadByCamera || {}).reduce(
+    (a, u) => ({ info: a.info + (u.info || 0), warn: a.warn + (u.warn || 0), error: a.error + (u.error || 0) }),
+    { info: 0, warn: 0, error: 0 },
+  );
+  const unreadTotal = totals.info + totals.warn + totals.error;
+  const unreadSev = totals.error ? 'error' : totals.warn ? 'warn' : 'info';
 
   return (
     <aside className={`sidebar ${collapsed ? 'sidebar--collapsed' : ''}`}>
@@ -35,6 +45,11 @@ export default function Sidebar({ projects, activeProjectId, onSelectProject }) 
             <span className="sidebar__item-icon">{project.icon}</span>
             {!collapsed && (
               <span className="sidebar__item-label">{project.label}</span>
+            )}
+            {project.id === 'logs' && unreadTotal > 0 && (
+              <span className={`sidebar__badge sidebar__badge--${unreadSev}`}>
+                {unreadTotal > 99 ? '99+' : unreadTotal}
+              </span>
             )}
           </button>
         ))}

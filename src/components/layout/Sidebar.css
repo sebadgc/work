@@ -44,6 +44,7 @@
 }
 
 .sidebar__item {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -60,6 +61,26 @@
   text-align: left;
   width: 100%;
 }
+
+/* Badge de logs sin leer (sumatoria de todas las cámaras) */
+.sidebar__badge {
+  position: absolute;
+  top: 3px;
+  right: 4px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: var(--radius-full);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 17px;
+  text-align: center;
+  font-family: var(--font-mono);
+}
+
+.sidebar__badge--error { background: var(--status-inactive); color: #fff; }
+.sidebar__badge--warn { background: #f2933a; color: #1a1208; }
+.sidebar__badge--info { background: var(--accent-secondary); color: #0b1a2b; }
 
 .sidebar__item:hover {
   background: var(--surface-hover);
