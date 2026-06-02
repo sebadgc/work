@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { Button } from '../common';
+import { MESSAGES } from '../../config';
 import './LogPanel.css';
 
 const pad = (n) => String(n).padStart(2, '0');
@@ -30,7 +31,7 @@ export default function LogPanel({
   selectedCameraName,
   allCameras,
   cameraStates,
-  unreadCameras,
+  unreadByCamera,
   onSelectCamera,
   onClearLogs,
 }) {
@@ -78,10 +79,10 @@ export default function LogPanel({
 
       {/* Header */}
       <div className="log-panel__header">
-        <span className="log-panel__title">LOGS</span>
+        <span className="log-panel__title">{MESSAGES.logPanel.title}</span>
         {selectedCameraId && logs.length > 0 && (
           <Button variant="ghost" size="sm" onClick={onClearLogs}>
-            Limpiar
+            {MESSAGES.logPanel.clear}
           </Button>
         )}
       </div>
@@ -90,14 +91,19 @@ export default function LogPanel({
       <div className="log-panel__tabs">
         {allCameras.map((cam) => {
           const isSelected = selectedCameraId === cam.camera_id;
-          const hasUnread = !isSelected && unreadCameras?.includes(cam.camera_id);
+          const u = unreadByCamera?.[cam.camera_id] || {};
+          const total = (u.info || 0) + (u.warn || 0) + (u.error || 0);
+          const hasUnread = !isSelected && total > 0;
           return (
             <button
               key={cam.camera_id}
-              className={`log-panel__tab ${isSelected ? 'log-panel__tab--selected' : ''} ${hasUnread ? 'log-panel__tab--unread' : ''}`}
+              className={`log-panel__tab ${isSelected ? 'log-panel__tab--selected' : ''} ${hasUnread ? 'log-panel__tab--unread' : ''} ${(!isSelected && u.error) ? 'log-panel__tab--alert' : ''}`}
               onClick={() => onSelectCamera(cam.camera_id)}
             >
-              {cam.camera_id}
+              <span className="log-panel__tab-id">{cam.camera_id}</span>
+              {!isSelected && u.error > 0 && <span className="log-badge log-badge--error">{u.error}</span>}
+              {!isSelected && u.warn > 0 && <span className="log-badge log-badge--warn">{u.warn}</span>}
+              {!isSelected && u.info > 0 && <span className="log-badge log-badge--info">{u.info}</span>}
             </button>
           );
         })}
@@ -106,9 +112,9 @@ export default function LogPanel({
       {/* Log lines */}
       <div className="log-panel__scroll" ref={scrollRef}>
         {!selectedCameraId ? (
-          <div className="log-panel__empty">Seleccioná una cámara para ver logs</div>
+          <div className="log-panel__empty">{MESSAGES.logPanel.selectCamera}</div>
         ) : logs.length === 0 ? (
-          <div className="log-panel__empty">Sin logs todavía...</div>
+          <div className="log-panel__empty">{MESSAGES.logPanel.noLogs}</div>
         ) : (
           // Agrupado por día (más nuevo arriba); el encabezado de día queda sticky.
           dayGroups.map((g) => (

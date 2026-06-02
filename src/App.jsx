@@ -1,5 +1,6 @@
 import { useState, Suspense } from 'react';
 import PROJECTS from './config/projects.config';
+import { MESSAGES } from './config';
 import { AppProvider } from './context';
 import { AppHeader, Sidebar } from './components/layout';
 import './styles/global.css';
@@ -31,7 +32,7 @@ export default function App() {
           <AppHeader activeProjectLabel={activeProject?.label || ''} />
           <div className="app-content">
             <Suspense fallback={
-              <div className="app-loading">Cargando módulo...</div>
+              <div className="app-loading">{MESSAGES.app.loadingModule}</div>
             }>
               {PROJECTS.map((p) => {
                 const Comp = p.component;

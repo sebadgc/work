@@ -7,4 +7,5 @@ export {
   buildWhepUrl,
   rtspPath,
 } from './settings.config';
+export { MESSAGES } from './messages';
 export { default as PROJECTS } from './projects.config';

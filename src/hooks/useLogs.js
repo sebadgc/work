@@ -10,7 +10,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { ENDPOINTS, ENV } from '../config';
+import { ENDPOINTS, ENV, MESSAGES } from '../config';
 import { logsService } from '../api';
 
 const HISTORY_DAYS = 30;
@@ -22,6 +22,12 @@ const timestamp = () =>
   });
 
 const keyOf = (e) => `${e.ts}|${e.type}|${e.message}`;
+
+// Severidad para el contador de "sin ver": error/critical → error, warn → warn, resto → info.
+const severity = (type) =>
+  (type === 'error' || type === 'critical') ? 'error'
+    : type === 'warn' ? 'warn'
+      : 'info';
 
 function mergeDedup(...lists) {
   const seen = new Set();
@@ -40,10 +46,12 @@ function mergeDedup(...lists) {
 
 export function useLogs() {
   const [logsByCamera, setLogsByCamera] = useState({});
+  const [unreadByCamera, setUnreadByCamera] = useState({}); // cam -> { info, warn, error }
   const eventSources = useRef({});
   const pendingRef = useRef({});       // camera -> entries sin flushear
   const loadedRef = useRef(new Set()); // cámaras cuyo historial ya cargamos
   const allLoadedRef = useRef(false);
+  const activeCameraRef = useRef(null); // cámara que se está mirando (no acumula sin-ver)
 
   // ── Flush por lotes a archivos ──
   const flushPending = useCallback(async () => {
@@ -69,6 +77,25 @@ export function useLogs() {
       return { ...prev, [cameraId]: [...existing, entry].slice(-DISPLAY_CAP) };
     });
     (pendingRef.current[cameraId] ||= []).push(entry);
+
+    // Si no estamos mirando esa cámara, cuenta como "sin ver" (por severidad).
+    if (activeCameraRef.current !== cameraId) {
+      const s = severity(type);
+      setUnreadByCamera(prev => {
+        const cur = prev[cameraId] || { info: 0, warn: 0, error: 0 };
+        return { ...prev, [cameraId]: { ...cur, [s]: cur[s] + 1 } };
+      });
+    }
+  }, []);
+
+  // Marca la cámara que se está mirando (resetea su contador de sin-ver).
+  const setActiveCamera = useCallback((cameraId) => {
+    activeCameraRef.current = cameraId;
+    if (cameraId) {
+      setUnreadByCamera(prev => (
+        prev[cameraId] ? { ...prev, [cameraId]: { info: 0, warn: 0, error: 0 } } : prev
+      ));
+    }
   }, []);
 
   // ── Carga de historial desde archivos ──
@@ -126,7 +153,7 @@ export function useLogs() {
 
     es.onerror = () => {
       if (es.readyState === EventSource.CLOSED) {
-        addLog(cameraId, 'warn', 'Conexión de logs cerrada por el servidor');
+        addLog(cameraId, 'warn', MESSAGES.log.streamClosed);
         delete eventSources.current[cameraId];
       }
     };
@@ -149,6 +176,8 @@ export function useLogs() {
 
   return {
     logsByCamera,
+    unreadByCamera,
+    setActiveCamera,
     addLog,
     clearLogs,
     clearAllLogs,

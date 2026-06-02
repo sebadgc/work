@@ -1,14 +1,13 @@
 import { useState } from 'react';
 import { Modal, ModalFooter, Button, FormField } from '../common';
+import { MESSAGES } from '../../config';
+
+const M = MESSAGES.addCamera;
 
 /**
  * Modal unificado para agregar una cámara.
- * 
- * Paso 1: Camera ID + Source (RTSP, solo en producción) + tipo de procesador
+ * Paso 1: Camera ID + Source (RTSP) + tipo de procesador
  * Paso 2: Configuración específica del procesador elegido
- * 
- * Collision config requiere: collision_alarm_id + not_detected_cooldown + detected_cooldown
- * Pluma config requiere: not_detected_cooldown + detected_cooldown
  */
 export default function AddCameraModal({ existingCameraIds, onConfirm, onClose }) {
   const [step, setStep] = useState(1);
@@ -55,38 +54,38 @@ export default function AddCameraModal({ existingCameraIds, onConfirm, onClose }
   // ── Step 1 ──
   if (step === 1) {
     return (
-      <Modal onClose={onClose} title="Agregar Cámara" subtitle="Configurar nueva instancia de cámara">
+      <Modal onClose={onClose} title={M.title} subtitle={M.subtitle}>
         <FormField
-          label="Camera ID"
+          label={M.cameraId}
           value={cameraId}
           onChange={setCameraId}
           type="text"
           required
-          placeholder="ej: cam-pluma-01"
-          hint={idTaken ? '⚠ Este ID ya está en uso' : 'Identificador único de la cámara en el backend'}
+          placeholder={M.cameraIdPlaceholder}
+          hint={idTaken ? M.cameraIdTaken : M.cameraIdHint}
         />
         <FormField
-          label="Source (RTSP URL)"
+          label={M.source}
           value={source}
           onChange={setSource}
           type="text"
           required
-          placeholder="rtsp://ip:port/id/live"
-          hint="URL del feed RTSP de la cámara"
+          placeholder={M.sourcePlaceholder}
+          hint={M.sourceHint}
         />
         <FormField
-          label="Tipo de procesamiento"
+          label={M.processorType}
           value={processorType}
           onChange={setProcessorType}
           options={[
-            { value: 'pluma_extendida', label: 'Pluma Extendida' },
-            { value: 'collision_detection', label: 'Detección de Colisión' },
+            { value: 'pluma_extendida', label: M.optPluma },
+            { value: 'collision_detection', label: M.optColision },
           ]}
         />
         <ModalFooter>
-          <Button variant="default" size="md" onClick={onClose}>Cancelar</Button>
+          <Button variant="default" size="md" onClick={onClose}>{M.cancel}</Button>
           <Button variant="primary" size="md" onClick={handleNext} disabled={!step1Valid}>
-            Siguiente →
+            {M.next}
           </Button>
         </ModalFooter>
       </Modal>
@@ -97,43 +96,43 @@ export default function AddCameraModal({ existingCameraIds, onConfirm, onClose }
   return (
     <Modal
       onClose={onClose}
-      title={processorType === 'pluma_extendida' ? 'Config — Pluma Extendida' : 'Config — Detección de Colisión'}
+      title={processorType === 'pluma_extendida' ? M.configPluma : M.configColision}
       subtitle={`${cameraId}${source ? ` — ${source}` : ''}`}
     >
       {processorType === 'collision_detection' && (
         <FormField
-          label="Collision Alarm ID"
+          label={M.collisionAlarmId}
           value={collisionAlarmId}
           onChange={setCollisionAlarmId}
           type="text"
           required
-          placeholder="ej: ALARM-001"
+          placeholder={M.collisionAlarmPlaceholder}
         />
       )}
       <FormField
-        label="Cooldown sin detección (seg)"
+        label={M.cooldownNoDetect}
         value={notDetectedCooldown}
         onChange={setNotDetectedCooldown}
         type="number"
         min={1}
         required
-        hint="Tiempo en segundos para volver a verificar cuando no hay detección"
+        hint={M.cooldownNoDetectHint}
       />
       <FormField
-        label="Cooldown con detección (seg)"
+        label={M.cooldownDetect}
         value={detectedCooldown}
         onChange={setDetectedCooldown}
         type="number"
         min={1}
         required
-        hint="Tiempo en segundos para volver a verificar cuando hubo detección"
+        hint={M.cooldownDetectHint}
       />
 
       <ModalFooter>
-        <Button variant="ghost" size="md" onClick={handleBack}>← Atrás</Button>
-        <Button variant="default" size="md" onClick={onClose}>Cancelar</Button>
+        <Button variant="ghost" size="md" onClick={handleBack}>{M.back}</Button>
+        <Button variant="default" size="md" onClick={onClose}>{M.cancel}</Button>
         <Button variant="primary" size="md" onClick={handleConfirm} disabled={!step2Valid}>
-          Iniciar cámara
+          {M.start}
         </Button>
       </ModalFooter>
     </Modal>

@@ -1,8 +1,11 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAppContext } from '../context';
 import { snapshotsService } from '../api';
+import { MESSAGES } from '../config';
 import { Button, Badge, Modal } from '../components/common';
 import './SnapshotsPage.css';
+
+const M = MESSAGES;
 
 const pad = (n) => String(n).padStart(2, '0');
 const todayKey = () => {
@@ -71,26 +74,14 @@ export default function SnapshotsPage() {
     [items, alertFilter],
   );
 
-  if (!root) {
-    return (
-      <div className="snapshots-page">
-        <div className="snapshots-page__empty">
-          <div className="snapshots-page__empty-icon">▦</div>
-          <p className="snapshots-page__empty-title">Configurá la carpeta de snapshots</p>
-          <p className="snapshots-page__empty-hint">
-            En ⚙ → Conexión, seteá “Carpeta de snapshots (root)” para ver las imágenes
-            que guarda el backend.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="snapshots-page">
+      {!root && (
+        <div className="snapshots-page__note">{M.snapshots.noRootNote}</div>
+      )}
       <div className="snapshots-page__toolbar">
         <select className="snapshots-page__select" value={camera} onChange={e => setCamera(e.target.value)}>
-          {cameraIds.length === 0 && <option value="">(sin cámaras)</option>}
+          {cameraIds.length === 0 && <option value="">{M.snapshots.noCameras}</option>}
           {cameraIds.map(id => <option key={id} value={id}>{id}</option>)}
         </select>
 
@@ -100,26 +91,24 @@ export default function SnapshotsPage() {
         </select>
 
         <select className="snapshots-page__select" value={alertFilter} onChange={e => setAlertFilter(e.target.value)}>
-          <option value="all">Todas las alertas</option>
+          <option value="all">{M.snapshots.allAlerts}</option>
           {alertTypes.map(a => <option key={a} value={a}>{a}</option>)}
         </select>
 
         <span className="snapshots-page__count">{filtered.length}</span>
         <div className="snapshots-page__spacer" />
-        <Button variant="ghost" size="sm" onClick={reload}>Refrescar</Button>
+        <Button variant="ghost" size="sm" onClick={reload}>{M.snapshots.refresh}</Button>
       </div>
 
       {loading ? (
         <div className="snapshots-page__empty">
-          <p className="snapshots-page__empty-hint">Cargando…</p>
+          <p className="snapshots-page__empty-hint">{M.snapshots.loading}</p>
         </div>
       ) : filtered.length === 0 ? (
         <div className="snapshots-page__empty">
           <div className="snapshots-page__empty-icon">▦</div>
-          <p className="snapshots-page__empty-title">Sin snapshots</p>
-          <p className="snapshots-page__empty-hint">
-            No hay capturas para {camera || 'esta cámara'} el {fmtDay(day)}.
-          </p>
+          <p className="snapshots-page__empty-title">{M.snapshots.emptyTitle}</p>
+          <p className="snapshots-page__empty-hint">{M.snapshots.emptyHint(camera, fmtDay(day))}</p>
         </div>
       ) : (
         <div className="snapshots-page__grid">
@@ -131,7 +120,7 @@ export default function SnapshotsPage() {
               </div>
               <div className="snap-card__meta">
                 <Badge color={s.source === 'manual' ? 'neutral' : 'red'}>{s.alert}</Badge>
-                <span className="snap-card__time">{s.time}{s.source === 'manual' ? ' · manual' : ''}</span>
+                <span className="snap-card__time">{s.time}{s.source === 'manual' ? M.snapshots.manualTag : ''}</span>
               </div>
             </button>
           ))}
@@ -142,7 +131,7 @@ export default function SnapshotsPage() {
         <Modal
           onClose={() => setZoom(null)}
           title={camera}
-          subtitle={`${zoom.alert} — ${fmtDay(day)} ${zoom.time}${zoom.source === 'manual' ? ' · manual' : ''}`}
+          subtitle={`${zoom.alert} — ${fmtDay(day)} ${zoom.time}${zoom.source === 'manual' ? M.snapshots.manualTag : ''}`}
         >
           <img className="snap-zoom__img" src={zoom.url} alt={zoom.alert} />
         </Modal>

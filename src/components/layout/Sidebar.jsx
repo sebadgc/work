@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { MESSAGES } from '../../config';
 import './Sidebar.css';
 
 /**
@@ -17,7 +18,7 @@ export default function Sidebar({ projects, activeProjectId, onSelectProject }) 
         <button
           className="sidebar__toggle"
           onClick={() => setCollapsed(prev => !prev)}
-          title={collapsed ? 'Expandir menú' : 'Colapsar menú'}
+          title={collapsed ? MESSAGES.sidebar.expand : MESSAGES.sidebar.collapse}
         >
           {collapsed ? '▸' : '◂'}
         </button>
@@ -42,7 +43,7 @@ export default function Sidebar({ projects, activeProjectId, onSelectProject }) 
       {!collapsed && (
         <div className="sidebar__footer">
           <span className="sidebar__footer-text">
-            {projects.length} página{projects.length !== 1 ? 's' : ''}
+            {MESSAGES.sidebar.pagesCount(projects.length)}
           </span>
         </div>
       )}

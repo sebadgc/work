@@ -12,6 +12,7 @@
 
 // Los componentes se importan lazy para que no carguen todos de entrada.
 import { lazy } from 'react';
+import { MESSAGES } from './messages';
 
 const CamerasPage = lazy(() => import('../pages/CamerasPage'));
 const LogsPage = lazy(() => import('../pages/LogsPage'));
@@ -29,23 +30,23 @@ const SnapshotsPage = lazy(() => import('../pages/SnapshotsPage'));
 const PROJECTS = [
   {
     id: 'cameras',
-    label: 'Cámaras',
+    label: MESSAGES.pages.cameras.label,
     icon: '◉',
-    description: 'Monitoreo de cámaras y feeds en vivo',
+    description: MESSAGES.pages.cameras.description,
     component: CamerasPage,
   },
   {
     id: 'logs',
-    label: 'Logs',
+    label: MESSAGES.pages.logs.label,
     icon: '≡',
-    description: 'Historial de logs por cámara',
+    description: MESSAGES.pages.logs.description,
     component: LogsPage,
   },
   {
     id: 'snapshots',
-    label: 'Snapshots',
+    label: MESSAGES.pages.snapshots.label,
     icon: '▦',
-    description: 'Capturas de alertas por cámara',
+    description: MESSAGES.pages.snapshots.description,
     component: SnapshotsPage,
   },
 ];

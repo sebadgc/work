@@ -1,6 +1,6 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { cameraService, snapshotsService } from '../api';
-import { buildWhepUrl, PLUMA_PATCH_METHODS } from '../config';
+import { buildWhepUrl, PLUMA_PATCH_METHODS, MESSAGES } from '../config';
 import { useAppContext } from '../context';
 import { Button, ConfirmModal, StatusDot, Modal, ModalFooter } from '../components/common';
 import { CameraCard, CameraGrid } from '../components/cameras';
@@ -9,6 +9,7 @@ import { AddCameraModal, PatchMethodModal, ActivateCameraModal } from '../compon
 import './CamerasPage.css';
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+const M = MESSAGES;
 
 export default function CamerasPage() {
   const {
@@ -16,15 +17,13 @@ export default function CamerasPage() {
     presets,
     cameras, registerCamera, unregisterCamera,
     cameraStates, activateGroup, removeCamera, addMethod, removeMethod,
-    logsByCamera, addLog, clearLogs, loadHistory,
+    logsByCamera, unreadByCamera, setActiveCamera, addLog, clearLogs, loadHistory,
     startLogStream, stopLogStream,
   } = useAppContext();
 
   const [selectedCameraId, setSelectedCameraId] = useState(null);
-  const [unreadCameras, setUnreadCameras] = useState([]);
   const [stoppingIds, setStoppingIds] = useState([]);
   const [activatingIds, setActivatingIds] = useState([]);
-  const prevLogCounts = useRef({});
   const [showAddModal, setShowAddModal] = useState(false);
   const [patchModal, setPatchModal] = useState(null);
   const [activatePreset, setActivatePreset] = useState(null);
@@ -33,7 +32,6 @@ export default function CamerasPage() {
 
   const selectCamera = useCallback((camId) => {
     setSelectedCameraId(camId);
-    setUnreadCameras(prev => prev.filter(id => id !== camId));
   }, []);
 
   // Mantener siempre una cámara enfocada (la primera) y reparar si la actual se va.
@@ -45,11 +43,12 @@ export default function CamerasPage() {
     }
   }, [cameras, selectedCameraId]);
 
-  // Al enfocar una cámara, cargar su historial de logs (archivos) para poder
-  // scrollear días anteriores en el panel de la derecha.
+  // Al enfocar una cámara: marcarla como activa (resetea su contador de sin-ver)
+  // y cargar su historial de logs (archivos) para scrollear días anteriores.
   useEffect(() => {
+    setActiveCamera(selectedCameraId);
     if (selectedCameraId) loadHistory(selectedCameraId);
-  }, [selectedCameraId, loadHistory]);
+  }, [selectedCameraId, loadHistory, setActiveCamera]);
 
   // Cierre local de una cámara: corta el SSE, saca la card (desmonta el feed
   // WebRTC → se deja de streamear el RTSP) y limpia el estado.
@@ -69,7 +68,7 @@ export default function CamerasPage() {
     registerCamera(id, preset.rtsp, preset.name);
     setSelectedCameraId(id);
     setActivatingIds(prev => [...prev, id]);
-    addLog(id, 'info', `Activando "${preset.name || id}"...`);
+    addLog(id, 'info', M.log.activateStarting(preset.name || id));
 
     let streamStarted = false;
     let lastError = null;
@@ -80,7 +79,7 @@ export default function CamerasPage() {
     const tryStart = async (startFn, label) => {
       let res = await startFn();
       if (!res.ok && !streamStarted) {
-        addLog(id, 'warn', `No pude iniciar ${label} (${res.error}). Intento detener y reiniciar la cámara...`);
+        addLog(id, 'warn', M.log.retry(label, res.error));
         await cameraService.deleteCamera(id);
         await sleep(500);
         res = await startFn();
@@ -90,54 +89,54 @@ export default function CamerasPage() {
 
     try {
       if (pluma) {
-        addLog(id, 'info', 'POST start_pluma_extendida...');
+        addLog(id, 'info', M.log.postPluma);
         const res = await tryStart(
           () => cameraService.startPlumaExtendida(id, preset.rtsp, preset.pluma?.config || {}),
-          'pluma',
+          M.cameraCard.badgePluma,
         );
         if (res.ok) {
           activateGroup(id, 'pluma', preset.pluma?.config || {});
           if (!streamStarted) { startLogStream(id); streamStarted = true; }
-          addLog(id, 'info', 'Pluma OK — activando opcionales...');
+          addLog(id, 'info', M.log.plumaOk);
           await sleep(600); // dar tiempo a que el procesador quede listo
           for (const method of PLUMA_PATCH_METHODS) {
             // PATCH sin body: el opcional usa los defaults del backend (los cooldowns
             // ya viajan en start_pluma_extendida). Mandar config acá daba 422.
             const r = await cameraService.patchMethod(id, method.id);
-            if (r.ok) { addMethod(id, method.id); addLog(id, 'info', `+ ${method.label}`); }
-            else addLog(id, 'error', `Método ${method.label}: ${r.error}`);
+            if (r.ok) { addMethod(id, method.id); addLog(id, 'info', M.log.methodOk(method.label)); }
+            else addLog(id, 'error', M.log.methodError(method.label, r.error));
             await sleep(150);
           }
         } else {
           lastError = res.error;
-          addLog(id, 'error', `Pluma error: ${res.error}`);
+          addLog(id, 'error', M.log.plumaError(res.error));
         }
       }
 
       if (collision) {
-        addLog(id, 'info', 'POST start_collision_detection...');
+        addLog(id, 'info', M.log.postCollision);
         const res = await tryStart(
           () => cameraService.startCollisionDetection(id, preset.rtsp, preset.collision?.config || {}),
-          'colisión',
+          M.cameraCard.badgeColision,
         );
         if (res.ok) {
           activateGroup(id, 'collision', preset.collision?.config || {});
           if (!streamStarted) { startLogStream(id); streamStarted = true; }
-          addLog(id, 'info', 'Colisión OK');
+          addLog(id, 'info', M.log.collisionOk);
         } else {
           lastError = res.error;
-          addLog(id, 'error', `Colisión error: ${res.error}`);
+          addLog(id, 'error', M.log.collisionError(res.error));
         }
       }
     } finally {
       setActivatingIds(prev => prev.filter(x => x !== id));
       // Si no arrancó ningún detector, cerramos la card y avisamos al usuario.
       if (!streamStarted) {
-        addLog(id, 'error', `No pude levantar la cámara. Error: ${lastError || 'desconocido'}`);
+        addLog(id, 'error', M.log.activateFail(lastError));
         teardownCamera(id);
         setErrorInfo({
-          title: `No pude levantar la cámara ${id}`,
-          message: `Intenté iniciarla (y reiniciarla) sin éxito. Hablá con el equipo de desarrollo.\n\nError: ${lastError || 'desconocido'}`,
+          title: M.errors.activateFailTitle(id),
+          message: M.errors.activateFailMsg(lastError),
         });
       }
     }
@@ -145,19 +144,19 @@ export default function CamerasPage() {
 
   // ── Agregar cámara ad-hoc (un solo procesador) ──
   const handleAddCamera = useCallback(async ({ cameraId, source, processorType, config }) => {
-    const label = processorType === 'pluma_extendida' ? 'pluma extendida' : 'detección de colisión';
-    addLog(cameraId, 'info', `Iniciando ${label} — source: ${source}`);
+    const label = processorType === 'pluma_extendida' ? M.log.procPluma : M.log.procColision;
+    addLog(cameraId, 'info', M.log.adhocStarting(label, source));
 
     const res = processorType === 'pluma_extendida'
       ? await cameraService.startPlumaExtendida(cameraId, source, config)
       : await cameraService.startCollisionDetection(cameraId, source, config);
 
     if (!res.ok) {
-      addLog(cameraId, 'error', `Error del backend: ${res.error}`);
+      addLog(cameraId, 'error', M.log.adhocBackendError(res.error));
       setShowAddModal(false);
       return;
     }
-    addLog(cameraId, 'info', 'Backend respondió OK — procesador iniciado');
+    addLog(cameraId, 'info', M.log.adhocOk);
 
     registerCamera(cameraId, source, cameraId);
     activateGroup(cameraId, processorType === 'pluma_extendida' ? 'pluma' : 'collision', config);
@@ -170,57 +169,67 @@ export default function CamerasPage() {
   const handleDelete = useCallback(async (cameraId) => {
     setConfirmStop(null);
     setStoppingIds(prev => prev.includes(cameraId) ? prev : [...prev, cameraId]);
-    addLog(cameraId, 'info', 'Enviando DELETE...');
+    addLog(cameraId, 'info', M.log.delSending);
 
     const res = await cameraService.deleteCamera(cameraId);
     const stopWaiting = () => setStoppingIds(prev => prev.filter(id => id !== cameraId));
 
     if (res.ok) {
-      addLog(cameraId, 'info', 'Backend respondió OK — cámara detenida');
+      addLog(cameraId, 'info', M.log.delOk);
       teardownCamera(cameraId);
       stopWaiting();
       return;
     }
 
-    // Si la cámara ya no existe en el backend, reconciliamos: cerramos igual el
-    // feed local y sacamos la card (no tiene sentido seguir streameando el RTSP).
+    // Si la cámara ya no existe en el backend, reconciliamos: cerramos igual el feed local.
     const notFound = res.status === 404
       || /not\s*found|no\s*existe|no\s*encontrad|not\s*exist|unknown/i.test(res.error || '');
     if (notFound) {
-      addLog(cameraId, 'warn', `La cámara ya no existía en el backend (${res.error}) — cerrando feed local`);
+      addLog(cameraId, 'warn', M.log.delNotFound(res.error));
       teardownCamera(cameraId);
       stopWaiting();
+      return;
+    }
+
+    // Backend caído / sin conexión: cerramos el video igual y avisamos.
+    const connFail = res.status === 0
+      || /failed to fetch|networkerror|network error|load failed/i.test(res.error || '');
+    if (connFail) {
+      addLog(cameraId, 'error', M.log.delConnFail(res.error));
+      teardownCamera(cameraId);
+      stopWaiting();
+      setErrorInfo({ title: M.errors.backendDownTitle, message: M.errors.backendDownMsg });
       return;
     }
 
     // Otros errores: mantenemos la cámara para poder reintentar Detener.
-    addLog(cameraId, 'error', `Error al detener: ${res.error}`);
+    addLog(cameraId, 'error', M.log.delError(res.error));
     stopWaiting();
   }, [addLog, teardownCamera]);
 
   // ── Activar método PATCH (opcional de pluma) ──
   const confirmPatch = useCallback(async (cameraId, methodId, config) => {
-    addLog(cameraId, 'info', `Enviando PATCH /${cameraId}/${methodId}...`);
+    addLog(cameraId, 'info', M.log.patchSending(cameraId, methodId));
     const res = await cameraService.patchMethod(cameraId, methodId, config);
     if (!res.ok) {
-      addLog(cameraId, 'error', `Error PATCH: ${res.error}`);
+      addLog(cameraId, 'error', M.log.patchError(res.error));
       setPatchModal(null);
       return;
     }
-    addLog(cameraId, 'info', `Backend respondió OK — método ${methodId} activo`);
+    addLog(cameraId, 'info', M.log.patchOk(methodId));
     addMethod(cameraId, methodId);
     setPatchModal(null);
   }, [addLog, addMethod]);
 
   // ── Desactivar método PATCH ──
   const handleToggleMethodOff = useCallback(async (cameraId, methodId) => {
-    addLog(cameraId, 'info', `Desactivando método: ${methodId}...`);
+    addLog(cameraId, 'info', M.log.patchDisabling(methodId));
     const res = await cameraService.patchMethod(cameraId, methodId);
     if (!res.ok) {
-      addLog(cameraId, 'error', `Error PATCH: ${res.error}`);
+      addLog(cameraId, 'error', M.log.patchError(res.error));
       return;
     }
-    addLog(cameraId, 'info', `Backend respondió OK — método ${methodId} desactivado`);
+    addLog(cameraId, 'info', M.log.patchOffOk(methodId));
     removeMethod(cameraId, methodId);
     setPatchModal(null);
   }, [addLog, removeMethod]);
@@ -228,24 +237,12 @@ export default function CamerasPage() {
   // ── Capturar snapshot manual (se guarda en disco vía el dev server) ──
   const handleCapture = useCallback(async (cameraId, imageUrl) => {
     if (!imageUrl) {
-      addLog(cameraId, 'warn', 'No se pudo capturar el frame (sin video)');
+      addLog(cameraId, 'warn', M.log.captureNoVideo);
       return;
     }
     const ok = await snapshotsService.saveManual({ camera: cameraId, dataUrl: imageUrl });
-    addLog(cameraId, ok ? 'detection' : 'error',
-      ok ? '⚑ Snapshot manual guardado' : 'No se pudo guardar el snapshot manual');
+    addLog(cameraId, ok ? 'detection' : 'error', ok ? M.log.captureOk : M.log.captureFail);
   }, [addLog]);
-
-  // Detectar logs nuevos en cámaras que no estamos mirando
-  useEffect(() => {
-    Object.entries(logsByCamera).forEach(([camId, logs]) => {
-      const prevCount = prevLogCounts.current[camId] || 0;
-      if (logs.length > prevCount && camId !== selectedCameraId) {
-        setUnreadCameras(prev => prev.includes(camId) ? prev : [...prev, camId]);
-      }
-      prevLogCounts.current[camId] = logs.length;
-    });
-  }, [logsByCamera, selectedCameraId]);
 
   // ── Derived ──
   const runningIds = cameras.map(c => c.camera_id);
@@ -258,12 +255,10 @@ export default function CamerasPage() {
       <div className="cameras-page__main">
         <div className="cameras-page__toolbar">
           <Button variant="primary" size="md" onClick={() => setShowAddModal(true)}>
-            + Agregar cámara
+            {M.cameras.addCamera}
           </Button>
           <span className="cameras-page__count">
-            {cameras.length === 0
-              ? 'Sin cámaras activas'
-              : `${cameras.length} cámara${cameras.length > 1 ? 's' : ''} activa${cameras.length > 1 ? 's' : ''}`}
+            {cameras.length === 0 ? M.cameras.noneActive : M.cameras.countActive(cameras.length)}
           </span>
         </div>
 
@@ -275,7 +270,7 @@ export default function CamerasPage() {
                 <button
                   key={p.id}
                   className={`cam-pill ${on ? 'cam-pill--on' : ''}`}
-                  title={`${p.name || p.id} — ${on ? 'encendida' : 'apagada'}\n${p.rtsp}`}
+                  title={M.cameras.pillTitle(p.name || p.id, on, p.rtsp)}
                   onClick={() => (on ? selectCamera(p.id) : setActivatePreset(p))}
                 >
                   <StatusDot status={on ? 'active' : 'inactive'} size="md" />
@@ -307,10 +302,8 @@ export default function CamerasPage() {
             </CameraGrid>
           ) : (
             <div className="cameras-page__empty">
-              <p className="cameras-page__empty-title">No hay cámaras encendidas</p>
-              <p className="cameras-page__empty-hint">
-                Encendé una cámara del panel de arriba, o usá "+ Agregar cámara".
-              </p>
+              <p className="cameras-page__empty-title">{M.cameras.emptyTitle}</p>
+              <p className="cameras-page__empty-hint">{M.cameras.emptyHint}</p>
             </div>
           )}
         </div>
@@ -322,7 +315,7 @@ export default function CamerasPage() {
         selectedCameraName={selectedCamera?.name}
         allCameras={cameras}
         cameraStates={cameraStates}
-        unreadCameras={unreadCameras}
+        unreadByCamera={unreadByCamera}
         onSelectCamera={selectCamera}
         onClearLogs={() => clearLogs(selectedCameraId)}
       />
@@ -352,9 +345,9 @@ export default function CamerasPage() {
       )}
       {confirmStop && (
         <ConfirmModal
-          title={`¿Detener cámara ${confirmStop}?`}
-          message="Se detienen TODOS sus detectores (pluma, opcionales y colisión). Para volver a tener solo uno, reactivá la cámara eligiendo el grupo."
-          confirmLabel="Detener"
+          title={M.stopConfirm.title(confirmStop)}
+          message={M.stopConfirm.message}
+          confirmLabel={M.stopConfirm.confirm}
           variant="danger"
           onConfirm={() => handleDelete(confirmStop)}
           onClose={() => setConfirmStop(null)}
@@ -366,7 +359,7 @@ export default function CamerasPage() {
             {errorInfo.message}
           </p>
           <ModalFooter>
-            <Button variant="primary" size="md" onClick={() => setErrorInfo(null)}>Entendido</Button>
+            <Button variant="primary" size="md" onClick={() => setErrorInfo(null)}>{M.errors.ok}</Button>
           </ModalFooter>
         </Modal>
       )}

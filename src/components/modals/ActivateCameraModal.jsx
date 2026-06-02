@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { Modal, ModalFooter, Button } from '../common';
+import { MESSAGES } from '../../config';
 import './ActivateCameraModal.css';
+
+const M = MESSAGES.activate;
 
 /**
  * Modal de activación de una cámara preset. Permite elegir qué grupos de
@@ -18,33 +21,33 @@ export default function ActivateCameraModal({ preset, onActivate, onClose }) {
   return (
     <Modal
       onClose={onClose}
-      title={`¿Activar Cámara ${preset.name || preset.id}?`}
+      title={M.title(preset.name || preset.id)}
       subtitle={preset.rtsp}
     >
-      <p className="activate-hint">Elegí qué detectores encender:</p>
+      <p className="activate-hint">{M.hint}</p>
       <div className="activate-chips">
         <button
           type="button"
           className={`activate-chip ${pluma ? 'activate-chip--on' : ''}`}
           onClick={() => setPluma(v => !v)}
         >
-          <span className="activate-chip__title">Pluma</span>
-          <small className="activate-chip__sub">+ todos los opcionales</small>
+          <span className="activate-chip__title">{M.pluma}</span>
+          <small className="activate-chip__sub">{M.plumaSub}</small>
         </button>
         <button
           type="button"
           className={`activate-chip ${collision ? 'activate-chip--on' : ''}`}
           onClick={() => setCollision(v => !v)}
         >
-          <span className="activate-chip__title">Colisión</span>
-          <small className="activate-chip__sub">detección de colisión</small>
+          <span className="activate-chip__title">{M.colision}</span>
+          <small className="activate-chip__sub">{M.colisionSub}</small>
         </button>
       </div>
 
       <ModalFooter>
-        <Button variant="default" size="md" onClick={onClose}>Cancelar</Button>
+        <Button variant="default" size="md" onClick={onClose}>{M.cancel}</Button>
         <Button variant="primary" size="md" disabled={!canActivate} onClick={() => onActivate({ pluma, collision })}>
-          Activar
+          {M.confirm}
         </Button>
       </ModalFooter>
     </Modal>

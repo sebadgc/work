@@ -110,10 +110,25 @@ function readLogs(camera, days) {
 }
 
 // ── Snapshots ──
+
+/**
+ * Estructura de la carpeta de snapshots del BACKEND.
+ * 👉 ÚNICO lugar a editar si tu backend usa otra estructura.
+ *
+ * Default: <root>/snapshots/<camera>/<YYYY-MM-DD>/<name>.jpg
+ *   - Si tu `root` YA incluye "snapshots", sacá el segmento 'snapshots' de acá.
+ *   - Si no hay subcarpeta por fecha, quitá `date`.
+ *   - Si las cámaras cuelgan directo del root: `path.join(root, camera, date)`.
+ */
+function backendSnapDir(root, camera, date) {
+  const base = path.join(root, 'snapshots', camera);
+  return date ? path.join(base, date) : base;
+}
+
 function snapDates(camera, root) {
   if (!safe(camera)) return [];
   const set = new Set();
-  if (root) listDirs(path.join(root, 'snapshots', camera)).forEach((d) => DATE_RE.test(d) && set.add(d));
+  if (root) listDirs(backendSnapDir(root, camera)).forEach((d) => DATE_RE.test(d) && set.add(d));
   listDirs(path.join(MANUAL_DIR, camera)).forEach((d) => DATE_RE.test(d) && set.add(d));
   return Array.from(set).sort().reverse();
 }
@@ -128,7 +143,7 @@ function snapList(camera, date, root) {
       if (source === 'backend' && root) q.set('root', root);
       return { name, source, alert, time, date, url: `/api/snapshots/file?${q.toString()}` };
     });
-  const backend = root ? mk('backend', path.join(root, 'snapshots', camera, date)) : [];
+  const backend = root ? mk('backend', backendSnapDir(root, camera, date)) : [];
   const manual = mk('manual', path.join(MANUAL_DIR, camera, date));
   return [...backend, ...manual].sort((a, b) => b.time.localeCompare(a.time));
 }
@@ -136,7 +151,7 @@ function snapList(camera, date, root) {
 function snapFilePath({ source, camera, date, name, root }) {
   if (!safe(camera) || !DATE_RE.test(date) || !safe(name) || !JPG_RE.test(name)) return null;
   if (source === 'manual') return path.join(MANUAL_DIR, camera, date, name);
-  if (source === 'backend' && root) return path.join(root, 'snapshots', camera, date, name);
+  if (source === 'backend' && root) return path.join(backendSnapDir(root, camera, date), name);
   return null;
 }
 

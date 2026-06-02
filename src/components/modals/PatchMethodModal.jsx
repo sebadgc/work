@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Modal, ModalFooter, Button, FormField } from '../common';
-import { PLUMA_PATCH_METHODS, BASE_COOLDOWN_FIELDS } from '../../config';
+import { PLUMA_PATCH_METHODS, BASE_COOLDOWN_FIELDS, MESSAGES } from '../../config';
+
+const M = MESSAGES.patch;
 import './PatchMethodModal.css';
 
 /**
@@ -45,9 +47,9 @@ export default function PatchMethodModal({ cameraId, activeMethods, onConfirm, o
   // ── Paso 1: Selección de método ──
   if (!selectedMethod) {
     return (
-      <Modal onClose={onClose} title="Agregar Método" subtitle={cameraId}>
+      <Modal onClose={onClose} title={M.title} subtitle={cameraId}>
         {availableMethods.length === 0 ? (
-          <p className="patch-modal__empty">Todos los métodos ya están activos.</p>
+          <p className="patch-modal__empty">{M.allActive}</p>
         ) : (
           <div className="patch-modal__method-list">
             {availableMethods.map(method => (
@@ -63,7 +65,7 @@ export default function PatchMethodModal({ cameraId, activeMethods, onConfirm, o
           </div>
         )}
         <ModalFooter>
-          <Button variant="default" size="md" onClick={onClose}>Cerrar</Button>
+          <Button variant="default" size="md" onClick={onClose}>{M.close}</Button>
         </ModalFooter>
       </Modal>
     );
@@ -75,7 +77,7 @@ export default function PatchMethodModal({ cameraId, activeMethods, onConfirm, o
   return (
     <Modal
       onClose={onClose}
-      title={`Configurar ${selectedMethod.label}`}
+      title={M.configTitle(selectedMethod.label)}
       subtitle={`${cameraId} — PATCH /${cameraId}/${selectedMethod.id}`}
     >
       {allFields.map(field => (
@@ -87,13 +89,13 @@ export default function PatchMethodModal({ cameraId, activeMethods, onConfirm, o
           type={field.type === 'number' ? 'number' : 'text'}
           min={field.min}
           required={field.required}
-          hint={field.required ? undefined : 'Opcional'}
+          hint={field.required ? undefined : M.optional}
         />
       ))}
       <ModalFooter>
-        <Button variant="ghost" size="md" onClick={handleBack}>← Atrás</Button>
-        <Button variant="default" size="md" onClick={onClose}>Cancelar</Button>
-        <Button variant="primary" size="md" onClick={handleConfirm}>Aplicar</Button>
+        <Button variant="ghost" size="md" onClick={handleBack}>{M.back}</Button>
+        <Button variant="default" size="md" onClick={onClose}>{M.cancel}</Button>
+        <Button variant="primary" size="md" onClick={handleConfirm}>{M.apply}</Button>
       </ModalFooter>
     </Modal>
   );

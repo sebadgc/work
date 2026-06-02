@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAppContext } from '../../context';
+import { MESSAGES } from '../../config';
 import { SettingsModal } from '../modals';
 import './AppHeader.css';
 
@@ -19,7 +20,7 @@ export default function AppHeader({ activeProjectLabel }) {
         <div className="app-header__brand">
           <div className="app-header__logo">◈</div>
           <div className="app-header__brand-text">
-            <h1 className="app-header__title">Monitor AIB</h1>
+            <h1 className="app-header__title">{MESSAGES.header.brand}</h1>
             <span className="app-header__subtitle">{activeProjectLabel}</span>
           </div>
         </div>
@@ -28,8 +29,8 @@ export default function AppHeader({ activeProjectLabel }) {
       <div className="app-header__right">
         <button
           className="app-header__icon-btn"
-          title="Configuración"
-          aria-label="Configuración"
+          title={MESSAGES.header.settings}
+          aria-label={MESSAGES.header.settings}
           onClick={() => setShowSettings(true)}
         >
           ⚙

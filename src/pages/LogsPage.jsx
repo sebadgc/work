@@ -1,14 +1,17 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useAppContext } from '../context';
+import { MESSAGES } from '../config';
 import { Button, Badge } from '../components/common';
 import './LogsPage.css';
 
+const M = MESSAGES;
+
 const TYPE_FILTERS = [
-  { value: 'all', label: 'Todos los tipos' },
-  { value: 'info', label: 'Info' },
-  { value: 'detection', label: 'Detección' },
-  { value: 'warn', label: 'Warn' },
-  { value: 'error', label: 'Error' },
+  { value: 'all', label: M.logsPage.types.all },
+  { value: 'info', label: M.logsPage.types.info },
+  { value: 'detection', label: M.logsPage.types.detection },
+  { value: 'warn', label: M.logsPage.types.warn },
+  { value: 'error', label: M.logsPage.types.error },
 ];
 
 const TYPE_BADGE = { info: 'neutral', detection: 'blue', warn: 'yellow', error: 'red' };
@@ -72,12 +75,12 @@ export default function LogsPage() {
     <div className="logs-page">
       <div className="logs-page__toolbar">
         <select className="logs-page__select" value={cameraFilter} onChange={e => setCameraFilter(e.target.value)}>
-          <option value="all">Todas las cámaras</option>
+          <option value="all">{M.logsPage.allCameras}</option>
           {cameraIds.map(id => <option key={id} value={id}>{id}</option>)}
         </select>
 
         <select className="logs-page__select" value={dayFilter} onChange={e => setDayFilter(e.target.value)}>
-          <option value="all">Todos los días</option>
+          <option value="all">{M.logsPage.allDays}</option>
           {availableDays.map(d => <option key={d} value={d}>{fmtDay(d)}</option>)}
         </select>
 
@@ -88,7 +91,7 @@ export default function LogsPage() {
         <input
           className="logs-page__search"
           type="text"
-          placeholder="Buscar en logs…"
+          placeholder={M.logsPage.search}
           value={query}
           onChange={e => setQuery(e.target.value)}
         />
@@ -96,16 +99,14 @@ export default function LogsPage() {
         <span className="logs-page__count">{rows.length} / {allRows.length}</span>
         <div className="logs-page__spacer" />
         {allRows.length > 0 && (
-          <Button variant="ghost" size="sm" onClick={clearAllLogs}>Limpiar vista</Button>
+          <Button variant="ghost" size="sm" onClick={clearAllLogs}>{M.logsPage.clearView}</Button>
         )}
       </div>
 
       <div className="logs-page__list">
         {rows.length === 0 ? (
           <div className="logs-page__empty">
-            {allRows.length === 0
-              ? 'No hay logs todavía. Iniciá una cámara para empezar a registrar.'
-              : 'Ningún log coincide con los filtros.'}
+            {allRows.length === 0 ? M.logsPage.emptyNone : M.logsPage.emptyNoMatch}
           </div>
         ) : (
           rows.map((r, i) => (

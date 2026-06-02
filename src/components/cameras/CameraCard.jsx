@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import { StatusDot, Button, Badge } from '../common';
-import { PLUMA_PATCH_METHODS } from '../../config';
+import { PLUMA_PATCH_METHODS, MESSAGES } from '../../config';
 import CameraFeed from './CameraFeed';
 import './CameraCard.css';
 
@@ -37,8 +37,8 @@ export default function CameraCard({
   });
 
   const groupLabels = [];
-  if (isPlumaOn) groupLabels.push('PLUMA');
-  if (isCollisionOn) groupLabels.push('COLISIÓN');
+  if (isPlumaOn) groupLabels.push(MESSAGES.cameraCard.statusPluma);
+  if (isCollisionOn) groupLabels.push(MESSAGES.cameraCard.statusColision);
 
   const handleCapture = (e) => {
     e.stopPropagation();
@@ -58,7 +58,7 @@ export default function CameraCard({
         <div className="camera-card__status-overlay">
           <StatusDot status="active" />
           <span className="camera-card__status-label">
-            {isActivating ? 'ACTIVANDO…' : (groupLabels.join(' · ') || 'SIN DETECTORES')}
+            {isActivating ? MESSAGES.cameraCard.activating : (groupLabels.join(' · ') || MESSAGES.cameraCard.noDetectors)}
           </span>
         </div>
 
@@ -77,8 +77,8 @@ export default function CameraCard({
         <div className="camera-card__header">
           <span className="camera-card__name">{camera.name || camera.camera_id}</span>
           <div className="camera-card__badges">
-            {isPlumaOn && <Badge color="green">pluma</Badge>}
-            {isCollisionOn && <Badge color="blue">colisión</Badge>}
+            {isPlumaOn && <Badge color="green">{MESSAGES.cameraCard.badgePluma}</Badge>}
+            {isCollisionOn && <Badge color="blue">{MESSAGES.cameraCard.badgeColision}</Badge>}
           </div>
         </div>
         <div className="camera-card__source" title={camera.source}>
@@ -89,20 +89,20 @@ export default function CameraCard({
         <div className="camera-card__actions">
           {isStopping ? (
             <span className="camera-card__stopping">
-              <span className="camera-card__spinner">◌</span> Deteniendo…
+              <span className="camera-card__spinner">◌</span> {MESSAGES.cameraCard.stopping}
             </span>
           ) : (
             <>
               <Button variant="danger" size="sm" onClick={(e) => { e.stopPropagation(); onDelete(camera.camera_id); }}>
-                Detener
+                {MESSAGES.cameraCard.stop}
               </Button>
               {isPlumaOn && (
                 <Button variant="default" size="sm" onClick={(e) => { e.stopPropagation(); onPatchMethod(camera.camera_id); }}>
-                  + Método
+                  {MESSAGES.cameraCard.addMethod}
                 </Button>
               )}
               <Button variant="ghost" size="sm" onClick={handleCapture}>
-                Capturar
+                {MESSAGES.cameraCard.capture}
               </Button>
             </>
           )}

@@ -1,5 +1,6 @@
 import Modal, { ModalFooter } from './Modal';
 import Button from './Button';
+import { MESSAGES } from '../../config';
 
 /**
  * Diálogo de confirmación genérico.
@@ -15,8 +16,8 @@ import Button from './Button';
 export default function ConfirmModal({
   title,
   message,
-  confirmLabel = 'Confirmar',
-  cancelLabel = 'Cancelar',
+  confirmLabel = MESSAGES.confirm.confirm,
+  cancelLabel = MESSAGES.confirm.cancel,
   variant = 'danger',
   onConfirm,
   onClose,

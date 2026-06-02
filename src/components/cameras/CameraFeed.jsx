@@ -1,5 +1,6 @@
 import { useRef } from 'react';
 import { useWhepStream } from '../../hooks/useWhepStream';
+import { MESSAGES } from '../../config';
 import './CameraFeed.css';
 
 /**
@@ -20,7 +21,7 @@ export default function CameraFeed({ whepUrl, videoRef: externalRef }) {
       <div className="camera-feed camera-feed--placeholder">
         <div className="camera-feed__placeholder-inner">
           <span className="camera-feed__ph-icon">◉</span>
-          <span className="camera-feed__ph-label">SIN PREVIEW</span>
+          <span className="camera-feed__ph-label">{MESSAGES.feed.noPreview}</span>
         </div>
       </div>
     );
@@ -31,18 +32,18 @@ export default function CameraFeed({ whepUrl, videoRef: externalRef }) {
       <video ref={videoRef} className="camera-feed__video" muted playsInline autoPlay />
 
       {status === 'live' && (
-        <span className="camera-feed__tag camera-feed__tag--live">● EN VIVO</span>
+        <span className="camera-feed__tag camera-feed__tag--live">{MESSAGES.feed.live}</span>
       )}
       {status === 'connecting' && (
         <div className="camera-feed__overlay">
           <span className="camera-feed__spinner">◌</span>
-          <span>Conectando…</span>
+          <span>{MESSAGES.feed.connecting}</span>
         </div>
       )}
       {status === 'error' && (
         <div className="camera-feed__overlay camera-feed__overlay--error">
-          <span>Sin señal</span>
-          <small>Revisá el gateway WebRTC en Settings</small>
+          <span>{MESSAGES.feed.noSignal}</span>
+          <small>{MESSAGES.feed.noSignalHint}</small>
         </div>
       )}
     </div>

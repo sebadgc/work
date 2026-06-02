@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Modal, ModalFooter, Button, FormField } from '../common';
-import { SETTINGS_FIELDS } from '../../config';
+import { SETTINGS_FIELDS, MESSAGES } from '../../config';
 import './SettingsModal.css';
+
+const M = MESSAGES.settings;
 
 const blankCamera = () => ({
   id: '',
@@ -13,8 +15,8 @@ const blankCamera = () => ({
 
 /**
  * Modal de configuración con dos pestañas:
- *  - Conexión: URLs (API, gateway WebRTC, base RTSP) — persistido en localStorage.
- *  - Cámaras: editor de cámaras preset — persistido vía cameraConfigService (cameras.local.json).
+ *  - Conexión: URLs (persistido en localStorage).
+ *  - Cámaras: editor de cámaras preset (persistido vía cameras.local.json).
  */
 export default function SettingsModal({ settings, onSave, onReset, presets = [], onSavePresets, onClose }) {
   const [tab, setTab] = useState('conexion');
@@ -41,19 +43,19 @@ export default function SettingsModal({ settings, onSave, onReset, presets = [],
   };
 
   return (
-    <Modal onClose={onClose} title="Configuración">
+    <Modal onClose={onClose} title={M.title}>
       <div className="settings-tabs">
         <button
           className={`settings-tab ${tab === 'conexion' ? 'settings-tab--active' : ''}`}
           onClick={() => setTab('conexion')}
         >
-          Conexión
+          {M.tabConexion}
         </button>
         <button
           className={`settings-tab ${tab === 'camaras' ? 'settings-tab--active' : ''}`}
           onClick={() => setTab('camaras')}
         >
-          Cámaras
+          {M.tabCamaras}
         </button>
       </div>
 
@@ -71,32 +73,32 @@ export default function SettingsModal({ settings, onSave, onReset, presets = [],
             />
           ))}
           <ModalFooter>
-            <Button variant="ghost" size="md" onClick={handleReset}>Restaurar defaults</Button>
-            <Button variant="default" size="md" onClick={onClose}>Cancelar</Button>
-            <Button variant="primary" size="md" onClick={handleSaveConn}>Guardar</Button>
+            <Button variant="ghost" size="md" onClick={handleReset}>{M.restore}</Button>
+            <Button variant="default" size="md" onClick={onClose}>{M.cancel}</Button>
+            <Button variant="primary" size="md" onClick={handleSaveConn}>{M.save}</Button>
           </ModalFooter>
         </>
       ) : (
         <>
           <div className="settings-cams">
             {cams.length === 0 && (
-              <p className="settings-cams__empty">No hay cámaras preset. Agregá una.</p>
+              <p className="settings-cams__empty">{M.noCameras}</p>
             )}
             {cams.map((c, i) => (
               <div className="settings-cam" key={i}>
-                <FormField label="Nombre" value={c.name} onChange={(v) => setCamField(i, 'name', v)} placeholder="Pluma Muelle 1" />
-                <FormField label="Camera ID" value={c.id} onChange={(v) => setCamField(i, 'id', v)} placeholder="cam-pluma-01" required />
-                <FormField label="RTSP" value={c.rtsp} onChange={(v) => setCamField(i, 'rtsp', v)} placeholder="rtsp://ip:port/.../live" />
+                <FormField label={M.camName} value={c.name} onChange={(v) => setCamField(i, 'name', v)} placeholder={M.camNamePlaceholder} />
+                <FormField label={M.camId} value={c.id} onChange={(v) => setCamField(i, 'id', v)} placeholder={M.camIdPlaceholder} required />
+                <FormField label={M.camRtsp} value={c.rtsp} onChange={(v) => setCamField(i, 'rtsp', v)} placeholder={M.camRtspPlaceholder} />
 
                 <div className="settings-cam__group">
                   <label className="settings-cam__check">
                     <input type="checkbox" checked={!!c.pluma?.enabled} onChange={(e) => setGroupEnabled(i, 'pluma', e.target.checked)} />
-                    <span>Pluma (+ opcionales) por default</span>
+                    <span>{M.plumaEnabled}</span>
                   </label>
-                  <FormField label="Cooldown sin detección (seg)" type="number" min={1}
+                  <FormField label={M.cooldownNoDetect} type="number" min={1}
                     value={c.pluma?.config?.not_detected_cooldown ?? 5}
                     onChange={(v) => setGroupCfg(i, 'pluma', 'not_detected_cooldown', v)} />
-                  <FormField label="Cooldown con detección (seg)" type="number" min={1}
+                  <FormField label={M.cooldownDetect} type="number" min={1}
                     value={c.pluma?.config?.detected_cooldown ?? 2}
                     onChange={(v) => setGroupCfg(i, 'pluma', 'detected_cooldown', v)} />
                 </div>
@@ -104,28 +106,28 @@ export default function SettingsModal({ settings, onSave, onReset, presets = [],
                 <div className="settings-cam__group">
                   <label className="settings-cam__check">
                     <input type="checkbox" checked={!!c.collision?.enabled} onChange={(e) => setGroupEnabled(i, 'collision', e.target.checked)} />
-                    <span>Colisión por default</span>
+                    <span>{M.colisionEnabled}</span>
                   </label>
-                  <FormField label="Collision Alarm ID" value={c.collision?.config?.collision_alarm_id ?? ''}
-                    onChange={(v) => setGroupCfg(i, 'collision', 'collision_alarm_id', v)} placeholder="ALARM-001" />
-                  <FormField label="Cooldown sin detección (seg)" type="number" min={1}
+                  <FormField label={M.collisionAlarmId} value={c.collision?.config?.collision_alarm_id ?? ''}
+                    onChange={(v) => setGroupCfg(i, 'collision', 'collision_alarm_id', v)} placeholder={M.collisionAlarmPlaceholder} />
+                  <FormField label={M.cooldownNoDetect} type="number" min={1}
                     value={c.collision?.config?.not_detected_cooldown ?? 5}
                     onChange={(v) => setGroupCfg(i, 'collision', 'not_detected_cooldown', v)} />
-                  <FormField label="Cooldown con detección (seg)" type="number" min={1}
+                  <FormField label={M.cooldownDetect} type="number" min={1}
                     value={c.collision?.config?.detected_cooldown ?? 2}
                     onChange={(v) => setGroupCfg(i, 'collision', 'detected_cooldown', v)} />
                 </div>
 
                 <Button variant="danger" size="sm" className="settings-cam__del" onClick={() => removeCam(i)}>
-                  Eliminar
+                  {M.delete}
                 </Button>
               </div>
             ))}
           </div>
           <ModalFooter>
-            <Button variant="default" size="md" onClick={addCam}>+ Agregar cámara</Button>
-            <Button variant="default" size="md" onClick={onClose}>Cancelar</Button>
-            <Button variant="primary" size="md" onClick={handleSaveCams}>Guardar cámaras</Button>
+            <Button variant="default" size="md" onClick={addCam}>{M.addCamera}</Button>
+            <Button variant="default" size="md" onClick={onClose}>{M.cancel}</Button>
+            <Button variant="primary" size="md" onClick={handleSaveCams}>{M.saveCameras}</Button>
           </ModalFooter>
         </>
       )}

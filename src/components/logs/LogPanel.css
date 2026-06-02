@@ -61,6 +61,9 @@
 }
 
 .log-panel__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   background: transparent;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
@@ -71,6 +74,30 @@
   font-family: var(--font-mono);
   transition: all var(--transition-fast);
 }
+
+/* Tab con errores sin ver → realce de alerta */
+.log-panel__tab--alert {
+  border-color: var(--status-inactive);
+  color: var(--status-inactive);
+}
+
+/* Contadores de logs sin ver, por severidad */
+.log-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: var(--radius-full);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.log-badge--info { background: var(--accent-secondary); color: #0b1a2b; }
+.log-badge--warn { background: #f2933a; color: #1a1208; }
+.log-badge--error { background: var(--status-inactive); color: #fff; }
 
 .log-panel__tab:hover {
   border-color: var(--accent-secondary);

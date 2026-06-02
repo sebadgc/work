@@ -1,3 +1,4 @@
+import { MESSAGES } from '../../config';
 import './CameraGrid.css';
 
 /**
@@ -13,7 +14,7 @@ export default function CameraGrid({ children, loading, showDivider }) {
     return (
       <div className="camera-grid__loading">
         <span className="camera-grid__spinner">◌</span>
-        <span>Cargando cámaras...</span>
+        <span>{MESSAGES.cameras.loadingGrid}</span>
       </div>
     );
   }
