@@ -1,65 +1,102 @@
 /**
  * useLogs.js
  *
- * Hook para gestionar logs por cámara.
- * Se conecta al backend vía SSE (Server-Sent Events) en GET /{camera_id}/logs.
- * Sin backend conectado, solo muestra logs de acciones del frontend.
+ * Logs por cámara. Se conecta al backend vía SSE (GET /{camera_id}/logs) y
+ * mantiene los logs en memoria para la vista viva.
  *
- * Los logs se persisten en localStorage (cap MAX_LOG_LINES por cámara) y NO se
- * borran al detener la cámara, para alimentar la página histórica de Logs.
- * Cada entrada incluye `ts` (epoch) para ordenar globalmente entre cámaras.
- *
- * Si el evento SSE trae imagen de detección (data.image | data.snapshot | data.frame),
- * se reenvía a `onSnapshot` para poblar la galería de Snapshots.
+ * Persistencia: cada entrada lleva `ts` (epoch) + `time` (HH:MM:SS). Los logs se
+ * apendean por lotes (cada ~3s) a archivos JSONL por cámara/día vía logsService
+ * (/api/logs). El historial multi-día se trae con loadHistory/loadAllHistory.
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { ENV } from '../config';
-import { ENDPOINTS } from '../config';
+import { ENDPOINTS, ENV } from '../config';
+import { logsService } from '../api';
 
-const LOGS_STORAGE_KEY = 'monitor-aib:logs';
+const HISTORY_DAYS = 30;
+const DISPLAY_CAP = 5000; // máx entradas en memoria por cámara
 
 const timestamp = () =>
   new Date().toLocaleTimeString('es-AR', {
     hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit',
   });
 
-function loadLogs() {
-  try {
-    const raw = localStorage.getItem(LOGS_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
+const keyOf = (e) => `${e.ts}|${e.type}|${e.message}`;
+
+function mergeDedup(...lists) {
+  const seen = new Set();
+  const out = [];
+  for (const list of lists) {
+    for (const e of list || []) {
+      const k = keyOf(e);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push(e);
+    }
   }
+  out.sort((a, b) => (a.ts || 0) - (b.ts || 0));
+  return out;
 }
 
-export function useLogs({ onSnapshot } = {}) {
-  const [logsByCamera, setLogsByCamera] = useState(loadLogs);
+export function useLogs() {
+  const [logsByCamera, setLogsByCamera] = useState({});
   const eventSources = useRef({});
+  const pendingRef = useRef({});       // camera -> entries sin flushear
+  const loadedRef = useRef(new Set()); // cámaras cuyo historial ya cargamos
+  const allLoadedRef = useRef(false);
 
-  // Callback de snapshot estable vía ref (evita re-crear startLogStream).
-  const onSnapshotRef = useRef(onSnapshot);
-  onSnapshotRef.current = onSnapshot;
+  // ── Flush por lotes a archivos ──
+  const flushPending = useCallback(async () => {
+    const pend = pendingRef.current;
+    const cams = Object.keys(pend).filter(c => pend[c]?.length);
+    for (const cam of cams) {
+      const batch = pend[cam];
+      pend[cam] = [];
+      const ok = await logsService.appendLogs(cam, batch);
+      if (!ok) pend[cam] = [...batch, ...(pend[cam] || [])]; // reintentar luego
+    }
+  }, []);
 
-  // Persistencia con debounce: guarda 800ms después del último cambio.
-  const logsRef = useRef(logsByCamera);
-  logsRef.current = logsByCamera;
   useEffect(() => {
-    const t = setTimeout(() => {
-      try {
-        localStorage.setItem(LOGS_STORAGE_KEY, JSON.stringify(logsRef.current));
-      } catch {
-        /* localStorage lleno o no disponible — ignorar */
-      }
-    }, 800);
-    return () => clearTimeout(t);
-  }, [logsByCamera]);
+    const t = setInterval(flushPending, 3000);
+    return () => { clearInterval(t); flushPending(); };
+  }, [flushPending]);
 
   const addLog = useCallback((cameraId, type, message) => {
+    const entry = { ts: Date.now(), time: timestamp(), type, message };
     setLogsByCamera(prev => {
       const existing = prev[cameraId] || [];
-      const updated = [...existing, { time: timestamp(), ts: Date.now(), type, message }];
-      return { ...prev, [cameraId]: updated.slice(-ENV.MAX_LOG_LINES) };
+      return { ...prev, [cameraId]: [...existing, entry].slice(-DISPLAY_CAP) };
+    });
+    (pendingRef.current[cameraId] ||= []).push(entry);
+  }, []);
+
+  // ── Carga de historial desde archivos ──
+  const loadHistory = useCallback(async (cameraId) => {
+    if (!cameraId || loadedRef.current.has(cameraId)) return;
+    loadedRef.current.add(cameraId);
+    const hist = await logsService.getLogs({ camera: cameraId, days: HISTORY_DAYS });
+    if (!hist.length) return;
+    setLogsByCamera(prev => ({
+      ...prev,
+      [cameraId]: mergeDedup(hist, prev[cameraId]).slice(-DISPLAY_CAP),
+    }));
+  }, []);
+
+  const loadAllHistory = useCallback(async () => {
+    if (allLoadedRef.current) return;
+    allLoadedRef.current = true;
+    const hist = await logsService.getLogs({ days: HISTORY_DAYS });
+    if (!hist.length) return;
+    const byCam = {};
+    for (const e of hist) (byCam[e.camera_id] ||= []).push(e);
+    setLogsByCamera(prev => {
+      const next = { ...prev };
+      for (const [cam, list] of Object.entries(byCam)) {
+        next[cam] = mergeDedup(list, prev[cam]).slice(-DISPLAY_CAP);
+        loadedRef.current.add(cam);
+      }
+      return next;
     });
   }, []);
 
@@ -71,12 +108,9 @@ export function useLogs({ onSnapshot } = {}) {
     setLogsByCamera({});
   }, []);
 
-  /**
-   * Conectar al stream SSE de logs del backend para una cámara.
-   * El backend debe exponer GET /{camera_id}/logs como text/event-stream.
-   */
+  /** Conectar al stream SSE de logs del backend para una cámara. */
   const startLogStream = useCallback((cameraId) => {
-    stopLogStream(cameraId); // cerrar conexión previa si existe
+    stopLogStream(cameraId);
 
     const url = `${ENV.API_BASE_URL}${ENDPOINTS.STREAM_LOGS(cameraId)}`;
     const es = new EventSource(url);
@@ -85,25 +119,12 @@ export function useLogs({ onSnapshot } = {}) {
       try {
         const data = JSON.parse(event.data);
         addLog(cameraId, data.type || 'info', data.message || event.data);
-
-        // Si el evento trae una captura de detección, alimentar Snapshots.
-        const img = data.image || data.snapshot || data.frame;
-        if (img && onSnapshotRef.current) {
-          onSnapshotRef.current({
-            camera_id: cameraId,
-            timestamp: data.timestamp || new Date().toISOString(),
-            alert: data.alert || data.method || data.type || 'detección',
-            imageUrl: img,
-          });
-        }
       } catch {
-        // No es JSON: texto plano.
         addLog(cameraId, 'info', event.data);
       }
     };
 
     es.onerror = () => {
-      // EventSource reconecta automáticamente; si queda CLOSED, avisamos.
       if (es.readyState === EventSource.CLOSED) {
         addLog(cameraId, 'warn', 'Conexión de logs cerrada por el servidor');
         delete eventSources.current[cameraId];
@@ -113,7 +134,6 @@ export function useLogs({ onSnapshot } = {}) {
     eventSources.current[cameraId] = es;
   }, [addLog]);
 
-  /** Cerrar la conexión SSE de una cámara. */
   const stopLogStream = useCallback((cameraId) => {
     const es = eventSources.current[cameraId];
     if (es) {
@@ -122,7 +142,6 @@ export function useLogs({ onSnapshot } = {}) {
     }
   }, []);
 
-  /** Cerrar todas las conexiones SSE. */
   const stopAllLogStreams = useCallback(() => {
     Object.values(eventSources.current).forEach(es => es.close());
     eventSources.current = {};
@@ -133,6 +152,8 @@ export function useLogs({ onSnapshot } = {}) {
     addLog,
     clearLogs,
     clearAllLogs,
+    loadHistory,
+    loadAllHistory,
     startLogStream,
     stopLogStream,
     stopAllLogStreams,

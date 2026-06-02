@@ -3,7 +3,6 @@ import { useCameraState } from '../hooks/useCameraState';
 import { useCameraConfig } from '../hooks/useCameraConfig';
 import { useLogs } from '../hooks/useLogs';
 import { useSettings } from '../hooks/useSettings';
-import { useSnapshots } from '../hooks/useSnapshots';
 import apiClient from '../api/apiClient';
 
 const AppContext = createContext(null);
@@ -17,10 +16,9 @@ export function AppProvider({ children }) {
   const [cameras, setCameras] = useState([]);
 
   const settingsApi = useSettings();
-  const snapshots = useSnapshots();
   const cameraState = useCameraState();
   const cameraConfig = useCameraConfig();
-  const logs = useLogs({ onSnapshot: snapshots.addSnapshot });
+  const logs = useLogs();
 
   // Mantener el apiClient sincronizado con la URL de settings.
   useEffect(() => {
@@ -48,7 +46,6 @@ export function AppProvider({ children }) {
     ...cameraState,
     ...cameraConfig,
     ...logs,
-    ...snapshots,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

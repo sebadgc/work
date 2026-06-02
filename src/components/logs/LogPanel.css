@@ -91,6 +91,21 @@
   animation: pulse 2s infinite;
 }
 
+/* Separador de día (pegajoso) */
+.log-day {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--surface-0);
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  padding: var(--space-2) 0 var(--space-1);
+  margin-bottom: var(--space-1);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
 /* Log lines */
 .log-line {
   font-family: var(--font-mono);

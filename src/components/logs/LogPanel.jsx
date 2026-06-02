@@ -1,6 +1,28 @@
-import { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { Button } from '../common';
 import './LogPanel.css';
+
+const pad = (n) => String(n).padStart(2, '0');
+
+// 'YYYY-MM-DD' → 'DD/MM/YYYY'
+function formatDay(date) {
+  const [y, m, d] = date.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+// Agrupa logs por día. Días más nuevos primero; dentro de cada día, más nuevo arriba.
+function groupByDay(logs) {
+  const map = new Map();
+  for (const log of logs) {
+    const dt = new Date(log.ts || Date.now());
+    const date = `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;
+    if (!map.has(date)) map.set(date, []);
+    map.get(date).push(log);
+  }
+  return Array.from(map.entries())
+    .map(([date, items]) => ({ date, label: formatDay(date), items: items.slice().reverse() }))
+    .sort((a, b) => b.date.localeCompare(a.date));
+}
 
 export default function LogPanel({
   logs,
@@ -48,6 +70,8 @@ export default function LogPanel({
     }
   }, [logs]);
 
+  const dayGroups = useMemo(() => groupByDay(logs), [logs]);
+
   return (
     <div className="log-panel" style={{ width: panelWidth, minWidth: panelWidth }}>
       <div className="log-panel__resize-handle" onMouseDown={handleMouseDown} />
@@ -86,8 +110,13 @@ export default function LogPanel({
         ) : logs.length === 0 ? (
           <div className="log-panel__empty">Sin logs todavía...</div>
         ) : (
-          // Más nuevo arriba, más viejo abajo.
-          logs.map((log, i) => <LogLine key={i} log={log} />).reverse()
+          // Agrupado por día (más nuevo arriba); el encabezado de día queda sticky.
+          dayGroups.map((g) => (
+            <div key={g.date} className="log-day-group">
+              <div className="log-day">{g.label}</div>
+              {g.items.map((log, i) => <LogLine key={`${log.ts}-${i}`} log={log} />)}
+            </div>
+          ))
         )}
       </div>
     </div>

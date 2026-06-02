@@ -17,6 +17,9 @@ export const SETTINGS_DEFAULTS = {
   webrtcBaseUrl: 'http://localhost:8889',
   // Base RTSP que consume el backend. Informativo / para armar URLs de ejemplo.
   rtspBaseUrl: 'rtsp://localhost:8554',
+  // Carpeta raíz donde el backend guarda los snapshots. Se busca en
+  // <root>/snapshots/<camera_id>/<YYYY-MM-DD>/*.jpg
+  snapshotsRoot: '',
 };
 
 /**
@@ -40,6 +43,12 @@ export const SETTINGS_FIELDS = [
     label: 'Base RTSP (referencia)',
     placeholder: 'rtsp://localhost:8554',
     hint: 'Base del RTSP que ingiere el backend. Solo informativo.',
+  },
+  {
+    key: 'snapshotsRoot',
+    label: 'Carpeta de snapshots (root)',
+    placeholder: 'C:\\ruta\\al\\root',
+    hint: 'Busca en <root>/snapshots/<cam>/<YYYY-MM-DD>/*.jpg (debe ser accesible desde donde corre el front).',
   },
 ];
 

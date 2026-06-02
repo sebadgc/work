@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DEFAULT_CAMERAS } from './src/config/cameras.config.js';
+import { devApiPlugin } from './dev-api.plugin.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CONFIG_FILE = path.resolve(__dirname, 'cameras.local.json');
@@ -67,7 +68,7 @@ function camerasApiPlugin() {
 }
 
 export default defineConfig({
-  plugins: [react(), camerasApiPlugin()],
+  plugins: [react(), camerasApiPlugin(), devApiPlugin()],
   server: {
     port: 3000,
   },

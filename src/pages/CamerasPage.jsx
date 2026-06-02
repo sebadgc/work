@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { cameraService } from '../api';
+import { cameraService, snapshotsService } from '../api';
 import { buildWhepUrl, PLUMA_PATCH_METHODS } from '../config';
 import { useAppContext } from '../context';
 import { Button, ConfirmModal, StatusDot, Modal, ModalFooter } from '../components/common';
@@ -16,9 +16,8 @@ export default function CamerasPage() {
     presets,
     cameras, registerCamera, unregisterCamera,
     cameraStates, activateGroup, removeCamera, addMethod, removeMethod,
-    logsByCamera, addLog, clearLogs,
+    logsByCamera, addLog, clearLogs, loadHistory,
     startLogStream, stopLogStream,
-    addSnapshot,
   } = useAppContext();
 
   const [selectedCameraId, setSelectedCameraId] = useState(null);
@@ -45,6 +44,12 @@ export default function CamerasPage() {
       setSelectedCameraId(cameras[0].camera_id);
     }
   }, [cameras, selectedCameraId]);
+
+  // Al enfocar una cámara, cargar su historial de logs (archivos) para poder
+  // scrollear días anteriores en el panel de la derecha.
+  useEffect(() => {
+    if (selectedCameraId) loadHistory(selectedCameraId);
+  }, [selectedCameraId, loadHistory]);
 
   // Cierre local de una cámara: corta el SSE, saca la card (desmonta el feed
   // WebRTC → se deja de streamear el RTSP) y limpia el estado.
@@ -220,11 +225,16 @@ export default function CamerasPage() {
     setPatchModal(null);
   }, [addLog, removeMethod]);
 
-  // ── Capturar snapshot manual ──
-  const handleCapture = useCallback((cameraId, imageUrl) => {
-    addLog(cameraId, 'detection', '⚑ Snapshot capturado');
-    addSnapshot({ camera_id: cameraId, alert: 'captura manual', imageUrl });
-  }, [addLog, addSnapshot]);
+  // ── Capturar snapshot manual (se guarda en disco vía el dev server) ──
+  const handleCapture = useCallback(async (cameraId, imageUrl) => {
+    if (!imageUrl) {
+      addLog(cameraId, 'warn', 'No se pudo capturar el frame (sin video)');
+      return;
+    }
+    const ok = await snapshotsService.saveManual({ camera: cameraId, dataUrl: imageUrl });
+    addLog(cameraId, ok ? 'detection' : 'error',
+      ok ? '⚑ Snapshot manual guardado' : 'No se pudo guardar el snapshot manual');
+  }, [addLog]);
 
   // Detectar logs nuevos en cámaras que no estamos mirando
   useEffect(() => {
