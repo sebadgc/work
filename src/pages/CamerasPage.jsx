@@ -66,11 +66,14 @@ export default function CamerasPage() {
           activateGroup(id, 'pluma', preset.pluma?.config || {});
           if (!streamStarted) { startLogStream(id); streamStarted = true; }
           addLog(id, 'info', 'Pluma OK — activando opcionales...');
+          await sleep(600); // dar tiempo a que el procesador quede listo
           for (const method of PLUMA_PATCH_METHODS) {
-            const r = await cameraService.patchMethod(id, method.id, preset.pluma?.config || {});
+            // PATCH sin body: el opcional usa los defaults del backend (los cooldowns
+            // ya viajan en start_pluma_extendida). Mandar config acá daba 422.
+            const r = await cameraService.patchMethod(id, method.id);
             if (r.ok) { addMethod(id, method.id); addLog(id, 'info', `+ ${method.label}`); }
             else addLog(id, 'error', `Método ${method.label}: ${r.error}`);
-            await sleep(120);
+            await sleep(150);
           }
         } else {
           addLog(id, 'error', `Pluma error: ${res.error}`);
@@ -182,7 +185,6 @@ export default function CamerasPage() {
 
   // ── Derived ──
   const runningIds = cameras.map(c => c.camera_id);
-  const offPresets = presets.filter(p => !runningIds.includes(p.id));
   const selectedCamera = cameras.find(c => c.camera_id === selectedCameraId);
   const selectedLogs = logsByCamera[selectedCameraId] || [];
   const existingIds = Array.from(new Set([...runningIds, ...presets.map(p => p.id)]));
@@ -201,51 +203,55 @@ export default function CamerasPage() {
           </span>
         </div>
 
-        {cameras.length > 0 && (
-          <CameraGrid showDivider={cameras.length > 1}>
-            {cameras.map((cam) => (
-              <CameraCard
-                key={cam.camera_id}
-                camera={cam}
-                state={cameraStates[cam.camera_id]}
-                isSelected={selectedCameraId === cam.camera_id}
-                isStopping={stoppingIds.includes(cam.camera_id)}
-                isActivating={activatingIds.includes(cam.camera_id)}
-                whepUrl={buildWhepUrl(settings.webrtcBaseUrl, cam.source)}
-                onSelect={selectCamera}
-                onDelete={(id) => setConfirmStop(id)}
-                onPatchMethod={(id) => setPatchModal(id)}
-                onCapture={handleCapture}
-              />
-            ))}
-          </CameraGrid>
-        )}
-
-        {offPresets.length > 0 && (
-          <section className="cameras-page__presets">
-            <div className="cameras-page__presets-title">Cámaras disponibles</div>
-            <div className="cameras-page__presets-grid">
-              {offPresets.map((p) => (
-                <button key={p.id} className="preset-tile" onClick={() => setActivatePreset(p)}>
-                  <span className="preset-tile__icon">◉</span>
-                  <span className="preset-tile__name">{p.name || p.id}</span>
-                  <span className="preset-tile__rtsp" title={p.rtsp}>{p.rtsp}</span>
-                  <span className="preset-tile__action">Encender →</span>
+        {presets.length > 0 && (
+          <div className="cameras-page__panel">
+            {presets.map((p) => {
+              const on = runningIds.includes(p.id);
+              return (
+                <button
+                  key={p.id}
+                  className={`cam-pill ${on ? 'cam-pill--on' : ''}`}
+                  title={p.rtsp}
+                  onClick={() => (on ? selectCamera(p.id) : setActivatePreset(p))}
+                >
+                  <span className="cam-pill__name">{p.name || p.id}</span>
+                  <span className={`cam-pill__state ${on ? 'cam-pill__state--on' : ''}`}>
+                    {on ? 'ENCENDIDA' : 'APAGADA'}
+                  </span>
                 </button>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {cameras.length === 0 && offPresets.length === 0 && (
-          <div className="cameras-page__empty">
-            <div className="cameras-page__empty-icon">◉</div>
-            <p className="cameras-page__empty-title">No hay cámaras</p>
-            <p className="cameras-page__empty-hint">
-              Agregá cámaras preset desde ⚙ → Cámaras, o usá "+ Agregar cámara" para una ad-hoc.
-            </p>
+              );
+            })}
           </div>
         )}
+
+        <div className="cameras-page__scroll">
+          {cameras.length > 0 ? (
+            <CameraGrid showDivider={cameras.length > 1}>
+              {cameras.map((cam) => (
+                <CameraCard
+                  key={cam.camera_id}
+                  camera={cam}
+                  state={cameraStates[cam.camera_id]}
+                  isSelected={selectedCameraId === cam.camera_id}
+                  isStopping={stoppingIds.includes(cam.camera_id)}
+                  isActivating={activatingIds.includes(cam.camera_id)}
+                  whepUrl={buildWhepUrl(settings.webrtcBaseUrl, cam.source)}
+                  onSelect={selectCamera}
+                  onDelete={(id) => setConfirmStop(id)}
+                  onPatchMethod={(id) => setPatchModal(id)}
+                  onCapture={handleCapture}
+                />
+              ))}
+            </CameraGrid>
+          ) : (
+            <div className="cameras-page__empty">
+              <p className="cameras-page__empty-title">No hay cámaras encendidas</p>
+              <p className="cameras-page__empty-hint">
+                Encendé una cámara del panel de arriba, o usá "+ Agregar cámara".
+              </p>
+            </div>
+          )}
+        </div>
       </div>
 
       <LogPanel

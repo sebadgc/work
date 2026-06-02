@@ -28,11 +28,13 @@ class ApiClient {
       const res = await fetch(url, opts);
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        return {
-          ok: false,
-          status: res.status,
-          error: data?.detail || data?.message || `${res.status} ${res.statusText}`,
-        };
+        // FastAPI puede devolver `detail` como objeto/array (errores de validación);
+        // lo serializamos para que el log no muestre "[object Object]".
+        const detail = data?.detail ?? data?.message;
+        const error = detail == null
+          ? `${res.status} ${res.statusText}`
+          : (typeof detail === 'string' ? detail : JSON.stringify(detail));
+        return { ok: false, status: res.status, error };
       }
       return { ok: true, data };
     } catch (err) {
