@@ -40,9 +40,11 @@ export default function LogPanel({
     document.addEventListener('mouseup', onMouseUp);
   }, []);
 
+  // Los logs se muestran del más nuevo al más viejo → al llegar uno nuevo,
+  // scrolleamos al tope para mantenerlo visible.
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      scrollRef.current.scrollTop = 0;
     }
   }, [logs]);
 
@@ -84,9 +86,8 @@ export default function LogPanel({
         ) : logs.length === 0 ? (
           <div className="log-panel__empty">Sin logs todavía...</div>
         ) : (
-          logs.map((log, i) => (
-            <LogLine key={i} log={log} />
-          ))
+          // Más nuevo arriba, más viejo abajo.
+          logs.map((log, i) => <LogLine key={i} log={log} />).reverse()
         )}
       </div>
     </div>

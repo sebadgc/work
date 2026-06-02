@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { cameraService } from '../api';
 import { buildWhepUrl, PLUMA_PATCH_METHODS } from '../config';
 import { useAppContext } from '../context';
-import { Button, ConfirmModal } from '../components/common';
+import { Button, ConfirmModal, StatusDot } from '../components/common';
 import { CameraCard, CameraGrid } from '../components/cameras';
 import { LogPanel } from '../components/logs';
 import { AddCameraModal, PatchMethodModal, ActivateCameraModal } from '../components/modals';
@@ -236,13 +236,11 @@ export default function CamerasPage() {
                 <button
                   key={p.id}
                   className={`cam-pill ${on ? 'cam-pill--on' : ''}`}
-                  title={p.rtsp}
+                  title={`${p.name || p.id} — ${on ? 'encendida' : 'apagada'}\n${p.rtsp}`}
                   onClick={() => (on ? selectCamera(p.id) : setActivatePreset(p))}
                 >
                   <span className="cam-pill__name">{p.name || p.id}</span>
-                  <span className={`cam-pill__state ${on ? 'cam-pill__state--on' : ''}`}>
-                    {on ? 'ENCENDIDA' : 'APAGADA'}
-                  </span>
+                  <StatusDot status={on ? 'active' : 'inactive'} size="md" />
                 </button>
               );
             })}
