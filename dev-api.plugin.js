@@ -55,27 +55,16 @@ const listFiles = (dir) => {
   } catch { return []; }
 };
 
-const LEVEL_RE = /^(warning|warn|critical|crit|error|err|info|danger|alert|alarm|low|medium|high|debug)$/i;
-
-// Parsea el nombre del snapshot. Ej: risk_critical_14-18-33-919.jpg →
-//   { casuistica:'risk', level:'critical', time:'14:18:33' }
-// La hora (HH-MM-SS[-mmm]) va al final; el resto se separa por "_".
-// Si algún token es un nivel conocido (warning/critical/…) se usa como `level`
-// sin importar el orden; el resto forma la casuística.
+// Parsea el nombre del snapshot. Formato: <level>_<hh-mm-ss>_<nnn>.jpg
+//   - level = primer token, en MAYÚSCULA (ej: "risk" → "RISK")
+//   - time  = hh:mm:ss (tolera el ms separado por "_" o "-")
+// La casuística NO sale del nombre, sino del subdir (ver snapList).
 function parseSnapName(name) {
   const base = name.replace(JPG_RE, '');
-  const tm = base.match(/(\d{2})-(\d{2})-(\d{2})(?:-\d{1,3})?$/);
+  const tm = base.match(/(\d{2})-(\d{2})-(\d{2})/);
   const time = tm ? `${tm[1]}:${tm[2]}:${tm[3]}` : '';
-  const prefix = (tm ? base.slice(0, tm.index) : base).replace(/_+$/, '');
-  const tokens = prefix.split('_').filter(Boolean);
-  let level = '';
-  const rest = [];
-  for (const t of tokens) {
-    if (!level && LEVEL_RE.test(t)) level = t.toLowerCase();
-    else rest.push(t);
-  }
-  const casuistica = rest.join(' ') || level || 'snapshot';
-  return { casuistica, level, time };
+  const level = (base.split('_')[0] || '').toUpperCase();
+  return { level, time };
 }
 
 // ── Logs ──
@@ -150,11 +139,14 @@ function snapList(camera, date, root) {
   const mk = (source, dir, subdir = '') => listFiles(dir)
     .filter((n) => JPG_RE.test(n))
     .map((name) => {
-      const { casuistica, level, time } = parseSnapName(name);
+      const { level, time } = parseSnapName(name);
+      // Casuística: el subdir (carpeta de alerta) para backend; "Manual" para capturas manuales.
+      const casuistica = source === 'manual' ? 'Manual' : (subdir || 'snapshot');
+      const lvl = source === 'manual' ? '' : level;
       const q = new URLSearchParams({ source, camera, date, name });
       if (subdir) q.set('subdir', subdir);
       if (source === 'backend' && root) q.set('root', root);
-      return { name, source, subdir, casuistica, level, time, date, url: `/api/snapshots/file?${q.toString()}` };
+      return { name, source, subdir, casuistica, level: lvl, time, date, url: `/api/snapshots/file?${q.toString()}` };
     });
 
   // Backend: los .jpg viven en <date>/<alert-subdir>/*.jpg → iterar subdirectorios.

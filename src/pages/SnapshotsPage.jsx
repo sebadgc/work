@@ -148,7 +148,7 @@ export default function SnapshotsPage() {
                   <td>{fmtDay(s.date)}</td>
                   <td className="snap-mono">{s.time}</td>
                   <td className="snap-mono">{camera}</td>
-                  <td>{s.casuistica}{s.source === 'manual' ? M.snapshots.manualTag : ''}</td>
+                  <td>{s.casuistica}</td>
                   <td>{s.level ? <Badge color={levelColor(s.level)}>{s.level}</Badge> : <span className="snap-dash">—</span>}</td>
                   <td><img className="snap-thumb" src={s.url} alt={s.casuistica} loading="lazy" /></td>
                 </tr>
@@ -163,7 +163,7 @@ export default function SnapshotsPage() {
           size="wide"
           onClose={() => setZoom(null)}
           title={camera}
-          subtitle={`${zoom.casuistica}${zoom.level ? ` · ${zoom.level}` : ''} — ${fmtDay(day)} ${zoom.time}${zoom.source === 'manual' ? M.snapshots.manualTag : ''}`}
+          subtitle={`${zoom.casuistica}${zoom.level ? ` · ${zoom.level}` : ''} — ${fmtDay(day)} ${zoom.time}`}
         >
           <img className="snap-zoom__img" src={zoom.url} alt={zoom.casuistica} />
         </Modal>

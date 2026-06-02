@@ -8,4 +8,5 @@ export {
   rtspPath,
 } from './settings.config';
 export { MESSAGES } from './messages';
+export { START_DEFAULTS } from './start-defaults.config';
 export { default as PROJECTS } from './projects.config';

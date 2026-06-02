@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { cameraService, snapshotsService } from '../api';
-import { buildWhepUrl, PLUMA_PATCH_METHODS, MESSAGES } from '../config';
+import { buildWhepUrl, PLUMA_PATCH_METHODS, MESSAGES, START_DEFAULTS } from '../config';
 import { useAppContext } from '../context';
 import { Button, ConfirmModal, StatusDot, Modal, ModalFooter } from '../components/common';
 import { CameraCard, CameraGrid } from '../components/cameras';
@@ -68,6 +68,10 @@ export default function CamerasPage() {
     const id = preset.id;
     if (cameras.some(c => c.camera_id === id)) return;
 
+    // Config que se manda al backend (preset gana; si no, defaults globales).
+    const plumaCfg = preset.pluma?.config || START_DEFAULTS.pluma;
+    const collisionCfg = preset.collision?.config || START_DEFAULTS.collision;
+
     // Feed primero: registramos la cámara → aparece la card + el feed WebRTC.
     registerCamera(id, preset.rtsp, preset.name);
     setSelectedCameraId(id);
@@ -107,20 +111,20 @@ export default function CamerasPage() {
       if (pluma) {
         addLog(id, 'info', M.log.postPluma);
         const { res, alreadyRunning: ar } = await tryStart(
-          () => cameraService.startPlumaExtendida(id, preset.rtsp, preset.pluma?.config || {}),
+          () => cameraService.startPlumaExtendida(id, preset.rtsp, plumaCfg),
           M.cameraCard.badgePluma,
         );
         if (ar) {
           attachGroup('pluma', M.cameraCard.badgePluma);
         } else if (res.ok) {
-          activateGroup(id, 'pluma', preset.pluma?.config || {});
+          activateGroup(id, 'pluma', plumaCfg);
           if (!streamStarted) { startLogStream(id); streamStarted = true; }
           addLog(id, 'info', M.log.plumaOk);
           await sleep(600); // dar tiempo a que el procesador quede listo
           for (const method of PLUMA_PATCH_METHODS) {
-            // PATCH sin body: el opcional usa los defaults del backend (los cooldowns
-            // ya viajan en start_pluma_extendida). Mandar config acá daba 422.
-            const r = await cameraService.patchMethod(id, method.id);
+            // Config del opcional desde START_DEFAULTS.methods (start-defaults.config.js).
+            // {} = sin body → el backend usa sus defaults (los cooldowns ya van en el start).
+            const r = await cameraService.patchMethod(id, method.id, START_DEFAULTS.methods[method.id] || {});
             if (r.ok) { addMethod(id, method.id); addLog(id, 'info', M.log.methodOk(method.label)); }
             else addLog(id, 'error', M.log.methodError(method.label, r.error));
             await sleep(150);
@@ -134,13 +138,13 @@ export default function CamerasPage() {
       if (collision) {
         addLog(id, 'info', M.log.postCollision);
         const { res, alreadyRunning: ar } = await tryStart(
-          () => cameraService.startCollisionDetection(id, preset.rtsp, preset.collision?.config || {}),
+          () => cameraService.startCollisionDetection(id, preset.rtsp, collisionCfg),
           M.cameraCard.badgeColision,
         );
         if (ar) {
           attachGroup('collision', M.cameraCard.badgeColision);
         } else if (res.ok) {
-          activateGroup(id, 'collision', preset.collision?.config || {});
+          activateGroup(id, 'collision', collisionCfg);
           if (!streamStarted) { startLogStream(id); streamStarted = true; }
           addLog(id, 'info', M.log.collisionOk);
         } else {
