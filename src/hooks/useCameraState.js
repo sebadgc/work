@@ -1,31 +1,50 @@
 /**
  * useCameraState.js
- * 
- * Hook para gestionar el estado de las cámaras activas.
- * Cada cámara activa tiene: mode, config, activeMethods[].
+ *
+ * Estado de los detectores activos por cámara. Una cámara (camera_id) puede
+ * correr pluma y/o colisión al mismo tiempo:
+ *
+ *   cameraStates[id] = {
+ *     pluma:     { active, config, methods: [] },  // methods = ids de opcionales activos
+ *     collision: { active, config },
+ *   }
  */
 
 import { useState, useCallback } from 'react';
 
-/**
- * @typedef {Object} CameraState
- * @property {boolean} active
- * @property {'pluma_extendida'|'collision_detection'} mode
- * @property {object} config
- * @property {string[]} activeMethods - IDs de métodos PATCH activos (solo pluma)
- */
+const emptyCamera = () => ({
+  pluma: { active: false, config: null, methods: [] },
+  collision: { active: false, config: null },
+});
 
 export function useCameraState() {
   const [cameraStates, setCameraStates] = useState({});
 
-  const activateCamera = useCallback((cameraId, mode, config) => {
-    setCameraStates(prev => ({
-      ...prev,
-      [cameraId]: { active: true, mode, config, activeMethods: [] },
-    }));
+  const activateGroup = useCallback((cameraId, group, config) => {
+    setCameraStates(prev => {
+      const cam = prev[cameraId] || emptyCamera();
+      return {
+        ...prev,
+        [cameraId]: {
+          ...cam,
+          [group]: { ...cam[group], active: true, config: config ?? cam[group].config },
+        },
+      };
+    });
   }, []);
 
-  const deactivateCamera = useCallback((cameraId) => {
+  const deactivateGroup = useCallback((cameraId, group) => {
+    setCameraStates(prev => {
+      const cam = prev[cameraId];
+      if (!cam) return prev;
+      const next = { ...cam[group], active: false };
+      if (group === 'pluma') next.methods = [];
+      return { ...prev, [cameraId]: { ...cam, [group]: next } };
+    });
+  }, []);
+
+  // Saca la cámara entera del estado (al hacer DELETE / Detener).
+  const removeCamera = useCallback((cameraId) => {
     setCameraStates(prev => {
       const next = { ...prev };
       delete next[cameraId];
@@ -36,13 +55,10 @@ export function useCameraState() {
   const addMethod = useCallback((cameraId, methodId) => {
     setCameraStates(prev => {
       const cam = prev[cameraId];
-      if (!cam) return prev;
+      if (!cam || cam.pluma.methods.includes(methodId)) return prev;
       return {
         ...prev,
-        [cameraId]: {
-          ...cam,
-          activeMethods: [...cam.activeMethods, methodId],
-        },
+        [cameraId]: { ...cam, pluma: { ...cam.pluma, methods: [...cam.pluma.methods, methodId] } },
       };
     });
   }, []);
@@ -53,31 +69,20 @@ export function useCameraState() {
       if (!cam) return prev;
       return {
         ...prev,
-        [cameraId]: {
-          ...cam,
-          activeMethods: cam.activeMethods.filter(m => m !== methodId),
-        },
+        [cameraId]: { ...cam, pluma: { ...cam.pluma, methods: cam.pluma.methods.filter(m => m !== methodId) } },
       };
     });
   }, []);
 
-  const getState = useCallback((cameraId) => {
-    return cameraStates[cameraId] || null;
-  }, [cameraStates]);
-
-  const getActiveCameras = useCallback(() => {
-    return Object.entries(cameraStates)
-      .filter(([, s]) => s.active)
-      .map(([id, s]) => ({ cameraId: id, ...s }));
-  }, [cameraStates]);
+  const getCamera = useCallback((cameraId) => cameraStates[cameraId] || null, [cameraStates]);
 
   return {
     cameraStates,
-    activateCamera,
-    deactivateCamera,
+    activateGroup,
+    deactivateGroup,
+    removeCamera,
     addMethod,
     removeMethod,
-    getState,
-    getActiveCameras,
+    getCamera,
   };
 }

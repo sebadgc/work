@@ -1,6 +1,9 @@
 # Build
 dist/
 
+# Config de cámaras editada en runtime (preset overrides)
+cameras.local.json
+
 # Entorno
 .env
 .env.local

@@ -10,7 +10,7 @@ import './AppHeader.css';
  * @param {string} activeProjectLabel - nombre de la página actualmente seleccionada
  */
 export default function AppHeader({ activeProjectLabel }) {
-  const { settings, updateSettings, resetSettings } = useAppContext();
+  const { settings, updateSettings, resetSettings, presets, savePresets } = useAppContext();
   const [showSettings, setShowSettings] = useState(false);
 
   return (
@@ -41,6 +41,8 @@ export default function AppHeader({ activeProjectLabel }) {
           settings={settings}
           onSave={updateSettings}
           onReset={resetSettings}
+          presets={presets}
+          onSavePresets={savePresets}
           onClose={() => setShowSettings(false)}
         />
       )}

@@ -5,24 +5,22 @@ import CameraFeed from './CameraFeed';
 import './CameraCard.css';
 
 /**
- * Card individual de cámara activa.
- * Muestra el feed en vivo (WebRTC), estado, métodos activos, y controles.
+ * Card de una cámara activa. Una cámara puede tener pluma y/o colisión.
  *
  * @param {object} camera - { camera_id, name, source }
- * @param {object|null} state - estado activo desde useCameraState
- * @param {boolean} isSelected - es la cámara enfocada (grande)
- * @param {boolean} isStopping - se está deteniendo (esperando al backend)
- * @param {string|null} whepUrl - endpoint WebRTC/WHEP del feed en vivo
- * @param {function} onSelect
- * @param {function} onDelete
- * @param {function} onPatchMethod
- * @param {function} onCapture - (cameraId, imageDataUrl) — snapshot manual
+ * @param {object|null} state - { pluma:{active,methods}, collision:{active} }
+ * @param {boolean} isSelected - cámara enfocada (grande)
+ * @param {boolean} isStopping - esperando al backend para detener
+ * @param {boolean} isActivating - orquestando el encendido
+ * @param {string|null} whepUrl
+ * @param {function} onSelect, onDelete, onPatchMethod, onCapture
  */
 export default function CameraCard({
   camera,
   state,
   isSelected,
   isStopping,
+  isActivating,
   whepUrl,
   onSelect,
   onDelete,
@@ -30,12 +28,17 @@ export default function CameraCard({
   onCapture,
 }) {
   const feedVideoRef = useRef(null);
-  const isPluma = state?.mode === 'pluma_extendida';
+  const isPlumaOn = !!state?.pluma?.active;
+  const isCollisionOn = !!state?.collision?.active;
 
-  const activeMethodLabels = (state?.activeMethods || []).map(id => {
+  const activeMethodLabels = (state?.pluma?.methods || []).map(id => {
     const method = PLUMA_PATCH_METHODS.find(m => m.id === id);
     return method?.label || id;
   });
+
+  const groupLabels = [];
+  if (isPlumaOn) groupLabels.push('PLUMA');
+  if (isCollisionOn) groupLabels.push('COLISIÓN');
 
   const handleCapture = (e) => {
     e.stopPropagation();
@@ -55,7 +58,7 @@ export default function CameraCard({
         <div className="camera-card__status-overlay">
           <StatusDot status="active" />
           <span className="camera-card__status-label">
-            {isPluma ? 'PLUMA' : 'COLISIÓN'}
+            {isActivating ? 'ACTIVANDO…' : (groupLabels.join(' · ') || 'SIN DETECTORES')}
           </span>
         </div>
 
@@ -73,11 +76,10 @@ export default function CameraCard({
       <div className="camera-card__info">
         <div className="camera-card__header">
           <span className="camera-card__name">{camera.name || camera.camera_id}</span>
-          {isPluma ? (
-            <Badge color="green">pluma</Badge>
-          ) : (
-            <Badge color="blue">colisión</Badge>
-          )}
+          <div className="camera-card__badges">
+            {isPlumaOn && <Badge color="green">pluma</Badge>}
+            {isCollisionOn && <Badge color="blue">colisión</Badge>}
+          </div>
         </div>
         <div className="camera-card__source" title={camera.source}>
           {camera.source}
@@ -94,7 +96,7 @@ export default function CameraCard({
               <Button variant="danger" size="sm" onClick={(e) => { e.stopPropagation(); onDelete(camera.camera_id); }}>
                 Detener
               </Button>
-              {isPluma && (
+              {isPlumaOn && (
                 <Button variant="default" size="sm" onClick={(e) => { e.stopPropagation(); onPatchMethod(camera.camera_id); }}>
                   + Método
                 </Button>

@@ -112,7 +112,16 @@
   display: flex;
   justify-content: space-between;
   align-items: baseline;
+  gap: var(--space-2);
   margin-bottom: 2px;
+}
+
+.camera-card__badges {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  flex-shrink: 0;
 }
 
 .camera-card__name {

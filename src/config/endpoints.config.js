@@ -7,10 +7,10 @@
 
 export const ENDPOINTS = {
   // POST - Iniciar procesamiento pluma extendida
-  START_PLUMA_EXTENDIDA: '/start_pluma_extendida',
+  START_PLUMA_EXTENDIDA: '/cameras/start_pluma_extendida',
 
   // POST - Iniciar detección de colisión
-  START_COLLISION_DETECTION: '/start_collision_detection',
+  START_COLLISION_DETECTION: '/cameras/start_collision_detection',
 
   // DELETE - Detener cámara por ID
   DELETE_CAMERA: (cameraId) => `/${cameraId}`,
