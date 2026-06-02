@@ -45,6 +45,14 @@ export default function CamerasPage() {
     }
   }, [cameras, selectedCameraId]);
 
+  // Cierre local de una cámara: corta el SSE, saca la card (desmonta el feed
+  // WebRTC → se deja de streamear el RTSP) y limpia el estado.
+  const teardownCamera = useCallback((cameraId) => {
+    stopLogStream(cameraId);
+    removeCamera(cameraId);
+    unregisterCamera(cameraId);
+  }, [stopLogStream, removeCamera, unregisterCamera]);
+
   // ── Activar una cámara preset: orquesta los procesadores secuencialmente ──
   const handleActivate = useCallback(async (preset, { pluma, collision }) => {
     setActivatePreset(null);
@@ -93,8 +101,13 @@ export default function CamerasPage() {
       }
     } finally {
       setActivatingIds(prev => prev.filter(x => x !== id));
+      // Si no arrancó ningún detector, no dejamos una card fantasma con el feed.
+      if (!streamStarted) {
+        addLog(id, 'error', 'No se pudo iniciar ningún detector — cerrando cámara');
+        teardownCamera(id);
+      }
     }
-  }, [cameras, registerCamera, activateGroup, addMethod, addLog, startLogStream]);
+  }, [cameras, registerCamera, activateGroup, addMethod, addLog, startLogStream, teardownCamera]);
 
   // ── Agregar cámara ad-hoc (un solo procesador) ──
   const handleAddCamera = useCallback(async ({ cameraId, source, processorType, config }) => {
@@ -126,18 +139,30 @@ export default function CamerasPage() {
     addLog(cameraId, 'info', 'Enviando DELETE...');
 
     const res = await cameraService.deleteCamera(cameraId);
-    if (!res.ok) {
-      addLog(cameraId, 'error', `Error al detener: ${res.error}`);
-      setStoppingIds(prev => prev.filter(id => id !== cameraId));
+    const stopWaiting = () => setStoppingIds(prev => prev.filter(id => id !== cameraId));
+
+    if (res.ok) {
+      addLog(cameraId, 'info', 'Backend respondió OK — cámara detenida');
+      teardownCamera(cameraId);
+      stopWaiting();
       return;
     }
-    addLog(cameraId, 'info', 'Backend respondió OK — cámara detenida');
 
-    stopLogStream(cameraId);
-    removeCamera(cameraId);
-    unregisterCamera(cameraId);
-    setStoppingIds(prev => prev.filter(id => id !== cameraId));
-  }, [addLog, removeCamera, unregisterCamera, stopLogStream]);
+    // Si la cámara ya no existe en el backend, reconciliamos: cerramos igual el
+    // feed local y sacamos la card (no tiene sentido seguir streameando el RTSP).
+    const notFound = res.status === 404
+      || /not\s*found|no\s*existe|no\s*encontrad|not\s*exist|unknown/i.test(res.error || '');
+    if (notFound) {
+      addLog(cameraId, 'warn', `La cámara ya no existía en el backend (${res.error}) — cerrando feed local`);
+      teardownCamera(cameraId);
+      stopWaiting();
+      return;
+    }
+
+    // Otros errores: mantenemos la cámara para poder reintentar Detener.
+    addLog(cameraId, 'error', `Error al detener: ${res.error}`);
+    stopWaiting();
+  }, [addLog, teardownCamera]);
 
   // ── Activar método PATCH (opcional de pluma) ──
   const confirmPatch = useCallback(async (cameraId, methodId, config) => {
