@@ -28,8 +28,19 @@ export const MESSAGES = {
   // Nombres y descripciones de las páginas del sidebar (ver projects.config.js)
   pages: {
     cameras: { label: 'Cámaras', description: 'Monitoreo de cámaras y feeds en vivo' },
+    monitor: { label: 'Monitoreo', description: 'Vista simple de cámaras activas y alarmas' },
     logs: { label: 'Logs', description: 'Historial de logs por cámara' },
     snapshots: { label: 'Snapshots', description: 'Capturas de alertas por cámara' },
+  },
+
+  // ── Módulo Monitoreo (versión simple, sin feed) ──
+  monitor: {
+    emptyTitle: 'No hay cámaras activas',
+    emptyHint: 'Encendé una cámara del panel de arriba.',
+    processors: 'Procesadores',
+    noProcessors: 'Sin detectores',
+    lastSnapshot: 'Última alarma',
+    noSnapshot: 'Sin alarmas registradas',
   },
 
   // ── Feed de video (CameraFeed) ──

@@ -1,0 +1,120 @@
+.monitor-card {
+  background: var(--surface-1);
+  border: 1px solid var(--status-active-muted);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+  animation: fadeIn 300ms ease both;
+}
+
+.monitor-card:hover {
+  border-color: var(--border-default);
+}
+
+.monitor-card--selected {
+  border-color: var(--accent-primary);
+  box-shadow: var(--shadow-glow-accent);
+}
+
+.monitor-card__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.monitor-card__name {
+  font-weight: 600;
+  font-size: var(--text-base);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.monitor-card__section-title {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-tertiary);
+  margin-top: var(--space-1);
+}
+
+.monitor-card__procs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.monitor-card__muted {
+  font-size: var(--text-sm);
+  color: var(--text-disabled);
+  font-family: var(--font-mono);
+}
+
+/* Última alarma */
+.monitor-card__snap {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.monitor-card__snap-img {
+  width: 120px;
+  height: 68px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  background: #000;
+  border: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.monitor-card__snap-meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.monitor-card__snap-casu {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.monitor-card__snap-time {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+}
+
+.monitor-card__nosnap {
+  font-size: var(--text-sm);
+  color: var(--text-disabled);
+  font-family: var(--font-mono);
+  padding: var(--space-2) 0;
+}
+
+/* Acciones */
+.monitor-card__actions {
+  display: flex;
+  align-items: center;
+  margin-top: var(--space-1);
+}
+
+.monitor-card__stopping {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--status-inactive);
+  font-family: var(--font-mono);
+}
+
+.monitor-card__spinner {
+  display: inline-block;
+  animation: spin 1s linear infinite;
+}

@@ -15,6 +15,7 @@ import { lazy } from 'react';
 import { MESSAGES } from './messages';
 
 const CamerasPage = lazy(() => import('../pages/CamerasPage'));
+const MonitorPage = lazy(() => import('../pages/MonitorPage'));
 const LogsPage = lazy(() => import('../pages/LogsPage'));
 const SnapshotsPage = lazy(() => import('../pages/SnapshotsPage'));
 
@@ -34,6 +35,13 @@ const PROJECTS = [
     icon: '◉',
     description: MESSAGES.pages.cameras.description,
     component: CamerasPage,
+  },
+  {
+    id: 'monitor',
+    label: MESSAGES.pages.monitor.label,
+    icon: '▣',
+    description: MESSAGES.pages.monitor.description,
+    component: MonitorPage,
   },
   {
     id: 'logs',

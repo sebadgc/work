@@ -1,19 +1,16 @@
-import { useState } from 'react';
-import { useAppContext } from '../../context';
 import { MESSAGES } from '../../config';
-import { SettingsModal } from '../modals';
 import './AppHeader.css';
 
 /**
- * Header global de la plataforma.
- * Brand + nombre de la página activa + acceso a Settings.
+ * Header global de la plataforma. Brand + nombre de la página activa.
+ *
+ * Nota: la rueda de configuración (⚙ → SettingsModal) está desactivada por ahora.
+ * El componente SettingsModal y su cableado siguen disponibles para reactivarlo
+ * a futuro (ver historial / components/modals/SettingsModal.jsx).
  *
  * @param {string} activeProjectLabel - nombre de la página actualmente seleccionada
  */
 export default function AppHeader({ activeProjectLabel }) {
-  const { settings, updateSettings, resetSettings, presets, savePresets } = useAppContext();
-  const [showSettings, setShowSettings] = useState(false);
-
   return (
     <header className="app-header">
       <div className="app-header__left">
@@ -25,28 +22,6 @@ export default function AppHeader({ activeProjectLabel }) {
           </div>
         </div>
       </div>
-
-      <div className="app-header__right">
-        <button
-          className="app-header__icon-btn"
-          title={MESSAGES.header.settings}
-          aria-label={MESSAGES.header.settings}
-          onClick={() => setShowSettings(true)}
-        >
-          ⚙
-        </button>
-      </div>
-
-      {showSettings && (
-        <SettingsModal
-          settings={settings}
-          onSave={updateSettings}
-          onReset={resetSettings}
-          presets={presets}
-          onSavePresets={savePresets}
-          onClose={() => setShowSettings(false)}
-        />
-      )}
     </header>
   );
 }
