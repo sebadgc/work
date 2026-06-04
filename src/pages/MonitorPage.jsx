@@ -228,6 +228,7 @@ export default function MonitorPage() {
                   isSelected={selectedCameraId === cam.camera_id}
                   isStopping={stoppingIds.includes(cam.camera_id)}
                   snapshotsRoot={settings.snapshotsRoot || ''}
+                  logs={logsByCamera[cam.camera_id] || []}
                   onSelect={selectCamera}
                   onDelete={(id) => setConfirmStop(id)}
                 />

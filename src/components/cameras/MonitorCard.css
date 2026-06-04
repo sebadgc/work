@@ -70,6 +70,12 @@
   background: #000;
   border: 1px solid var(--border-subtle);
   flex-shrink: 0;
+  cursor: zoom-in;
+  transition: border-color var(--transition-fast);
+}
+
+.monitor-card__snap-img:hover {
+  border-color: var(--accent-primary);
 }
 
 .monitor-card__snap-meta {
@@ -117,4 +123,29 @@
 .monitor-card__spinner {
   display: inline-block;
   animation: spin 1s linear infinite;
+}
+
+/* Análisis correlacionado al snapshot */
+.monitor-card__analysis {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: 1.45;
+  margin: 0;
+}
+
+/* Zoom (imagen ampliada en popup) */
+.monitor-card__zoom-img {
+  display: block;
+  max-width: 100%;
+  max-height: 70vh;
+  width: auto;
+  margin: 0 auto;
+  border-radius: var(--radius-md);
+  background: #000;
+}
+
+.monitor-card__zoom-analysis {
+  margin: var(--space-4) 0 0;
+  color: var(--text-secondary);
+  line-height: 1.5;
 }

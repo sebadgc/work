@@ -30,7 +30,8 @@ export function AppProvider({ children }) {
   const registerCamera = (cameraId, source, label) => {
     setCameras(prev => {
       if (prev.find(c => c.camera_id === cameraId)) return prev;
-      return [...prev, { camera_id: cameraId, source, name: label || cameraId }];
+      // startedAt: marca de tiempo de encendido en esta sesión (para filtrar snapshots viejos).
+      return [...prev, { camera_id: cameraId, source, name: label || cameraId, startedAt: Date.now() }];
     });
   };
 

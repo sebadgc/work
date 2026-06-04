@@ -40,7 +40,8 @@ export const MESSAGES = {
     processors: 'Procesadores',
     noProcessors: 'Sin detectores',
     lastSnapshot: 'Última alarma',
-    noSnapshot: 'Sin alarmas registradas',
+    noSnapshot: 'Sin alarmas en esta sesión',
+    analysis: 'Análisis',
   },
 
   // ── Feed de video (CameraFeed) ──
