@@ -43,6 +43,11 @@ export const MESSAGES = {
     noSnapshot: 'Sin alarmas en esta sesión',
     analysis: 'Análisis',
     acknowledge: 'Marcar como revisado',
+    groupPluma: 'Pluma + Todos',
+    groupWorkAtHeight: 'Trabajo en Altura',
+    groupColision: 'Colisión',
+    offWahMessage: '¿Desea apagar el detector de Trabajo en Altura?',
+    offWahConfirm: 'Apagar',
   },
 
   // ── Feed de video (CameraFeed) ──
@@ -115,7 +120,9 @@ export const MESSAGES = {
     postPluma: 'POST start_pluma_extendida...',
     retry: (label, error) => `No pude iniciar ${label} (${error}). Intento detener y reiniciar la cámara...`,
     alreadyRunningGroup: (label) => `${label}: ya estaba corriendo en el server — retomo la señal (sin reiniciar ni patchear)`,
-    plumaOk: 'Pluma OK — activando opcionales...',
+    plumaOk: 'Pluma extendida encendida',
+    addonsStarting: 'Encendiendo detectores adicionales',
+    addonsDone: 'Detectores Adicionales de Pluma Encendidos',
     methodOk: (label) => `+ ${label}`,
     methodError: (label, error) => `Método ${label}: ${error}`,
     plumaError: (error) => `Pluma error: ${error}`,

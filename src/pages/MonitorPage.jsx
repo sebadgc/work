@@ -25,7 +25,7 @@ export default function MonitorPage() {
     settings,
     presets,
     cameras, registerCamera, unregisterCamera,
-    cameraStates, activateGroup, removeCamera, addMethod,
+    cameraStates, activateGroup, removeCamera, addMethod, removeMethod,
     logsByCamera, unreadByCamera, alarms, acknowledgeAlarm, setActiveCamera, addLog, clearLogs, loadHistory,
     startLogStream, stopLogStream,
   } = useAppContext();
@@ -113,13 +113,14 @@ export default function MonitorPage() {
           activateGroup(id, 'pluma', plumaCfg);
           if (!streamStarted) { startLogStream(id); streamStarted = true; }
           addLog(id, 'info', M.log.plumaOk);
+          addLog(id, 'info', M.log.addonsStarting);
           await sleep(600);
           for (const method of PLUMA_PATCH_METHODS) {
             const r = await cameraService.patchMethod(id, method.id, START_DEFAULTS.methods[method.id] || {});
-            if (r.ok) { addMethod(id, method.id); addLog(id, 'info', M.log.methodOk(method.label)); }
-            else addLog(id, 'error', M.log.methodError(method.label, r.error));
+            if (r.ok) addMethod(id, method.id);
             await sleep(150);
           }
+          addLog(id, 'info', M.log.addonsDone);
         } else {
           lastError = res.error;
           addLog(id, 'error', M.log.plumaError(res.error));
@@ -191,6 +192,16 @@ export default function MonitorPage() {
     stopWaiting();
   }, [addLog, teardownCamera]);
 
+  // ── Apagar un método opcional (PATCH) — ej: Trabajo en Altura ──
+  const handleToggleMethodOff = useCallback(async (cameraId, methodId) => {
+    const label = PLUMA_PATCH_METHODS.find(m => m.id === methodId)?.label || methodId;
+    addLog(cameraId, 'info', M.log.patchDisabling(label));
+    const res = await cameraService.patchMethod(cameraId, methodId);
+    if (!res.ok) { addLog(cameraId, 'error', M.log.patchError(res.error)); return; }
+    addLog(cameraId, 'info', M.log.patchOffOk(label));
+    removeMethod(cameraId, methodId);
+  }, [addLog, removeMethod]);
+
   // ── Derived ──
   const runningIds = cameras.map(c => c.camera_id);
   const selectedCamera = cameras.find(c => c.camera_id === selectedCameraId);
@@ -233,6 +244,7 @@ export default function MonitorPage() {
                   alarmLevel={alarms[cam.camera_id]}
                   onSelect={selectCamera}
                   onAcknowledge={() => acknowledgeAlarm(cam.camera_id)}
+                  onToggleMethod={handleToggleMethodOff}
                   onDelete={(id) => setConfirmStop(id)}
                 />
               ))}

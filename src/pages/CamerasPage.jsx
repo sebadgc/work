@@ -130,15 +130,16 @@ export default function CamerasPage() {
           activateGroup(id, 'pluma', plumaCfg);
           if (!streamStarted) { startLogStream(id); streamStarted = true; }
           addLog(id, 'info', M.log.plumaOk);
+          addLog(id, 'info', M.log.addonsStarting);
           await sleep(600); // dar tiempo a que el procesador quede listo
           for (const method of PLUMA_PATCH_METHODS) {
             // Config del opcional desde START_DEFAULTS.methods (start-defaults.config.js).
             // {} = sin body → el backend usa sus defaults (los cooldowns ya van en el start).
             const r = await cameraService.patchMethod(id, method.id, START_DEFAULTS.methods[method.id] || {});
-            if (r.ok) { addMethod(id, method.id); addLog(id, 'info', M.log.methodOk(method.label)); }
-            else addLog(id, 'error', M.log.methodError(method.label, r.error));
+            if (r.ok) addMethod(id, method.id);
             await sleep(150);
           }
+          addLog(id, 'info', M.log.addonsDone);
         } else {
           lastError = res.error;
           addLog(id, 'error', M.log.plumaError(res.error));

@@ -1,12 +1,13 @@
 import { useState, useEffect, useMemo } from 'react';
-import { StatusDot, Button, Badge, Modal } from '../common';
-import { PLUMA_PATCH_METHODS, MESSAGES } from '../../config';
+import { StatusDot, Button, Badge, Modal, ConfirmModal } from '../common';
+import { MESSAGES } from '../../config';
 import { snapshotsService } from '../../api';
 import './MonitorCard.css';
 
 const M = MESSAGES;
+const WAH_ID = 'work_at_height'; // método opcional "Trabajo en Altura" (apagable aparte)
 
-const fmtDay = (k) => { if (!k) return ''; const [y, m, d] = k.split('-'); return `${d}/${m}/${y}`; };
+const fmtDay = (k) => { if (!k || !k.includes('-')) return k || ''; const [y, m, d] = k.split('-'); return `${d}/${m}/${y}`; };
 
 const LEVEL_COLOR = {
   critical: 'red', error: 'red', danger: 'red', alarm: 'red', alert: 'red', high: 'red',
@@ -15,7 +16,6 @@ const LEVEL_COLOR = {
 };
 const levelColor = (lvl) => LEVEL_COLOR[(lvl || '').toLowerCase()] || 'neutral';
 
-// Timestamp (ms, hora local) de un snapshot a partir de su fecha + hora.
 const snapTime = (s) => {
   const t = new Date(`${s.date}T${s.time || '00:00:00'}`).getTime();
   return Number.isNaN(t) ? 0 : t;
@@ -23,31 +23,30 @@ const snapTime = (s) => {
 
 /**
  * Recuadro de cámara activa (módulo Monitoreo, sin feed RTSP).
- * Muestra los procesadores y la ÚLTIMA alarma de ESTA sesión (snapshot del backend
- * posterior al encendido), con su análisis. Click en la imagen → se agranda.
- *
- * @param {object} camera - { camera_id, name, startedAt }
- * @param {object|null} state
- * @param {boolean} isSelected, isStopping
- * @param {string} snapshotsRoot
- * @param {Array} logs - logs de esta cámara (para correlacionar el análisis)
- * @param {function} onSelect, onDelete
+ * Procesadores agrupados (Pluma + Todos / Trabajo en Altura / Colisión) + última
+ * alarma del backend de esta sesión, con su análisis. Trabajo en Altura es apagable.
  */
-export default function MonitorCard({ camera, state, isSelected, isStopping, snapshotsRoot, logs = [], alarmLevel, onSelect, onAcknowledge, onDelete }) {
+export default function MonitorCard({
+  camera, state, isSelected, isStopping, snapshotsRoot, logs = [], alarmLevel,
+  onSelect, onAcknowledge, onToggleMethod, onDelete,
+}) {
   const [snap, setSnap] = useState(null);
   const [zoom, setZoom] = useState(false);
+  const [confirmOff, setConfirmOff] = useState(false);
 
-  // Pequeña tolerancia para no excluir un snapshot del mismo segundo del encendido.
   const since = (camera.startedAt || 0) - 1500;
 
   const isPlumaOn = !!state?.pluma?.active;
   const isCollisionOn = !!state?.collision?.active;
-  const methodLabels = (state?.pluma?.methods || []).map(id => {
-    const m = PLUMA_PATCH_METHODS.find(x => x.id === id);
-    return m?.label || id;
-  });
+  const workAtHeightOn = (state?.pluma?.methods || []).includes(WAH_ID);
 
-  // Última alarma del backend de ESTA sesión (>= startedAt). Refresca cada 8s.
+  // Procesadores agrupados.
+  const groups = [];
+  if (isPlumaOn) groups.push({ key: 'pluma', label: M.monitor.groupPluma, color: 'green' });
+  if (workAtHeightOn) groups.push({ key: 'wah', label: M.monitor.groupWorkAtHeight, color: 'accent', toggleable: true });
+  if (isCollisionOn) groups.push({ key: 'col', label: M.monitor.groupColision, color: 'blue' });
+
+  // Última alarma del backend de ESTA sesión. Refresca cada 8s.
   useEffect(() => {
     let alive = true;
     const fetchLatest = async () => {
@@ -57,7 +56,6 @@ export default function MonitorCard({ camera, state, isSelected, isStopping, sna
       if (!latestDate) { setSnap(null); return; }
       const list = await snapshotsService.getSnapshots({ camera: camera.camera_id, date: latestDate, root: snapshotsRoot });
       if (!alive) return;
-      // list viene ordenado desc por hora → el primero que sea del backend y de esta sesión.
       setSnap(list.find(s => s.source === 'backend' && snapTime(s) >= since) || null);
     };
     fetchLatest();
@@ -65,8 +63,7 @@ export default function MonitorCard({ camera, state, isSelected, isStopping, sna
     return () => { alive = false; clearInterval(t); };
   }, [camera.camera_id, snapshotsRoot, since]);
 
-  // Análisis correlacionado: log info con formato "{filename}: {analisis}".
-  // Matchea por filename (con o sin extensión) y toma lo que va tras los dos puntos.
+  // Análisis correlacionado: log info "{filename}: {analisis}".
   const analisis = useMemo(() => {
     if (!snap) return '';
     const base = snap.name.replace(/\.jpe?g$/i, '');
@@ -92,13 +89,28 @@ export default function MonitorCard({ camera, state, isSelected, isStopping, sna
       </div>
 
       <div className="monitor-card__section-title">{M.monitor.processors}</div>
-      <div className="monitor-card__procs">
-        {isPlumaOn && <Badge color="green">{M.cameraCard.badgePluma}</Badge>}
-        {methodLabels.map((l, i) => <Badge key={i} color="accent">{l}</Badge>)}
-        {isCollisionOn && <Badge color="blue">{M.cameraCard.badgeColision}</Badge>}
-        {!isPlumaOn && !isCollisionOn && (
-          <span className="monitor-card__muted">{M.monitor.noProcessors}</span>
-        )}
+      <div className="monitor-card__groups">
+        {groups.length === 0 && <span className="monitor-card__muted">{M.monitor.noProcessors}</span>}
+        {groups.map((g, i) => (
+          <div key={g.key}>
+            {i > 0 && <div className="monitor-card__group-sep" />}
+            {g.toggleable ? (
+              <button
+                type="button"
+                className="monitor-card__group monitor-card__group--toggle"
+                title={M.monitor.offWahMessage}
+                onClick={(e) => { e.stopPropagation(); setConfirmOff(true); }}
+              >
+                <Badge color={g.color}>{g.label}</Badge>
+                <span className="monitor-card__group-x">✕</span>
+              </button>
+            ) : (
+              <div className="monitor-card__group">
+                <Badge color={g.color}>{g.label}</Badge>
+              </div>
+            )}
+          </div>
+        ))}
       </div>
 
       <div className="monitor-card__section-title">{M.monitor.lastSnapshot}</div>
@@ -159,6 +171,17 @@ export default function MonitorCard({ camera, state, isSelected, isStopping, sna
           <img className="monitor-card__zoom-img" src={snap.url} alt={snap.casuistica} />
           {analisis && <p className="monitor-card__zoom-analysis">{analisis}</p>}
         </Modal>
+      )}
+
+      {confirmOff && (
+        <ConfirmModal
+          title={M.monitor.groupWorkAtHeight}
+          message={M.monitor.offWahMessage}
+          confirmLabel={M.monitor.offWahConfirm}
+          variant="danger"
+          onConfirm={() => { setConfirmOff(false); onToggleMethod?.(camera.camera_id, WAH_ID); }}
+          onClose={() => setConfirmOff(false)}
+        />
       )}
     </div>
   );
