@@ -47,6 +47,7 @@ function mergeDedup(...lists) {
 export function useLogs() {
   const [logsByCamera, setLogsByCamera] = useState({});
   const [unreadByCamera, setUnreadByCamera] = useState({}); // cam -> { info, warn, error }
+  const [alarms, setAlarms] = useState({}); // cam -> 'warn' | 'error' (alarma sin revisar, módulo Monitoreo)
   const eventSources = useRef({});
   const pendingRef = useRef({});       // camera -> entries sin flushear
   const loadedRef = useRef(new Set()); // cámaras cuyo historial ya cargamos
@@ -70,7 +71,7 @@ export function useLogs() {
     return () => { clearInterval(t); flushPending(); };
   }, [flushPending]);
 
-  const addLog = useCallback((cameraId, type, message) => {
+  const addLog = useCallback((cameraId, type, message, opts = {}) => {
     const entry = { ts: Date.now(), time: timestamp(), type, message };
     setLogsByCamera(prev => {
       const existing = prev[cameraId] || [];
@@ -78,14 +79,35 @@ export function useLogs() {
     });
     (pendingRef.current[cameraId] ||= []).push(entry);
 
+    const s = severity(type);
+
     // Si no estamos mirando esa cámara, cuenta como "sin ver" (por severidad).
     if (activeCameraRef.current !== cameraId) {
-      const s = severity(type);
       setUnreadByCamera(prev => {
         const cur = prev[cameraId] || { info: 0, warn: 0, error: 0 };
         return { ...prev, [cameraId]: { ...cur, [s]: cur[s] + 1 } };
       });
     }
+
+    // Alarma (módulo Monitoreo): warn/error que viene del backend (SSE).
+    // error pisa a warn; se apaga con acknowledgeAlarm.
+    if (opts.source === 'backend' && (s === 'warn' || s === 'error')) {
+      setAlarms(prev => {
+        const cur = prev[cameraId];
+        if (cur === 'error') return prev;
+        if (s === 'error' || cur !== 'warn') return { ...prev, [cameraId]: s };
+        return prev;
+      });
+    }
+  }, []);
+
+  const acknowledgeAlarm = useCallback((cameraId) => {
+    setAlarms(prev => {
+      if (!prev[cameraId]) return prev;
+      const next = { ...prev };
+      delete next[cameraId];
+      return next;
+    });
   }, []);
 
   // Marca la cámara que se está mirando (resetea su contador de sin-ver).
@@ -145,9 +167,9 @@ export function useLogs() {
     es.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        addLog(cameraId, data.type || 'info', data.message || event.data);
+        addLog(cameraId, data.type || 'info', data.message || event.data, { source: 'backend' });
       } catch {
-        addLog(cameraId, 'info', event.data);
+        addLog(cameraId, 'info', event.data, { source: 'backend' });
       }
     };
 
@@ -177,6 +199,8 @@ export function useLogs() {
   return {
     logsByCamera,
     unreadByCamera,
+    alarms,
+    acknowledgeAlarm,
     setActiveCamera,
     addLog,
     clearLogs,

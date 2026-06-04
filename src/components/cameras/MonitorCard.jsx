@@ -33,7 +33,7 @@ const snapTime = (s) => {
  * @param {Array} logs - logs de esta cámara (para correlacionar el análisis)
  * @param {function} onSelect, onDelete
  */
-export default function MonitorCard({ camera, state, isSelected, isStopping, snapshotsRoot, logs = [], onSelect, onDelete }) {
+export default function MonitorCard({ camera, state, isSelected, isStopping, snapshotsRoot, logs = [], alarmLevel, onSelect, onAcknowledge, onDelete }) {
   const [snap, setSnap] = useState(null);
   const [zoom, setZoom] = useState(false);
 
@@ -77,9 +77,13 @@ export default function MonitorCard({ camera, state, isSelected, isStopping, sna
     return i >= 0 ? l.message.slice(i + 1).trim() : l.message.trim();
   }, [snap, logs]);
 
+  const alarmClass = alarmLevel === 'error'
+    ? 'monitor-card--alarm-error'
+    : alarmLevel === 'warn' ? 'monitor-card--alarm-warn' : '';
+
   return (
     <div
-      className={`monitor-card ${isSelected ? 'monitor-card--selected' : ''}`}
+      className={`monitor-card ${isSelected ? 'monitor-card--selected' : ''} ${alarmClass}`}
       onClick={() => onSelect(camera.camera_id)}
     >
       <div className="monitor-card__head">
@@ -125,15 +129,24 @@ export default function MonitorCard({ camera, state, isSelected, isStopping, sna
       )}
 
       <div className="monitor-card__actions">
-        {isStopping ? (
-          <span className="monitor-card__stopping">
-            <span className="monitor-card__spinner">◌</span> {M.cameraCard.stopping}
-          </span>
-        ) : (
-          <Button variant="danger" size="sm" onClick={(e) => { e.stopPropagation(); onDelete(camera.camera_id); }}>
-            {M.cameraCard.stop}
-          </Button>
-        )}
+        <div className="monitor-card__actions-left">
+          {alarmLevel && (
+            <Button variant="default" size="sm" onClick={(e) => { e.stopPropagation(); onAcknowledge?.(); }}>
+              {M.monitor.acknowledge}
+            </Button>
+          )}
+        </div>
+        <div className="monitor-card__actions-right">
+          {isStopping ? (
+            <span className="monitor-card__stopping">
+              <span className="monitor-card__spinner">◌</span> {M.cameraCard.stopping}
+            </span>
+          ) : (
+            <Button variant="danger" size="sm" onClick={(e) => { e.stopPropagation(); onDelete(camera.camera_id); }}>
+              {M.cameraCard.stop}
+            </Button>
+          )}
+        </div>
       </div>
 
       {zoom && snap && (

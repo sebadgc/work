@@ -42,6 +42,7 @@ export const MESSAGES = {
     lastSnapshot: 'Última alarma',
     noSnapshot: 'Sin alarmas en esta sesión',
     analysis: 'Análisis',
+    acknowledge: 'Marcar como revisado',
   },
 
   // ── Feed de video (CameraFeed) ──

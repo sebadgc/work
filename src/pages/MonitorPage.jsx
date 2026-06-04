@@ -26,7 +26,7 @@ export default function MonitorPage() {
     presets,
     cameras, registerCamera, unregisterCamera,
     cameraStates, activateGroup, removeCamera, addMethod,
-    logsByCamera, unreadByCamera, setActiveCamera, addLog, clearLogs, loadHistory,
+    logsByCamera, unreadByCamera, alarms, acknowledgeAlarm, setActiveCamera, addLog, clearLogs, loadHistory,
     startLogStream, stopLogStream,
   } = useAppContext();
 
@@ -54,9 +54,10 @@ export default function MonitorPage() {
 
   const teardownCamera = useCallback((cameraId) => {
     stopLogStream(cameraId);
+    acknowledgeAlarm(cameraId);
     removeCamera(cameraId);
     unregisterCamera(cameraId);
-  }, [stopLogStream, removeCamera, unregisterCamera]);
+  }, [stopLogStream, acknowledgeAlarm, removeCamera, unregisterCamera]);
 
   // ── Activar cámara (mismo flujo que Cámaras, sin feed) ──
   const handleActivate = useCallback(async (preset, { pluma, collision }) => {
@@ -229,7 +230,9 @@ export default function MonitorPage() {
                   isStopping={stoppingIds.includes(cam.camera_id)}
                   snapshotsRoot={settings.snapshotsRoot || ''}
                   logs={logsByCamera[cam.camera_id] || []}
+                  alarmLevel={alarms[cam.camera_id]}
                   onSelect={selectCamera}
+                  onAcknowledge={() => acknowledgeAlarm(cam.camera_id)}
                   onDelete={(id) => setConfirmStop(id)}
                 />
               ))}

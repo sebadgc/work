@@ -108,6 +108,8 @@
 .monitor-card__actions {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
   margin-top: var(--space-1);
 }
 
@@ -148,4 +150,27 @@
   margin: var(--space-4) 0 0;
   color: var(--text-secondary);
   line-height: 1.5;
+}
+
+/* Alarma: titila el borde y tiñe el fondo (naranja=warning, rojo=error/critical) */
+.monitor-card--alarm-warn {
+  border-color: #f2933a;
+  background: rgba(242, 147, 58, 0.12);
+  animation: monitor-alarm-warn 1.1s ease-in-out infinite;
+}
+
+.monitor-card--alarm-error {
+  border-color: var(--status-inactive);
+  background: var(--status-inactive-muted);
+  animation: monitor-alarm-error 1.1s ease-in-out infinite;
+}
+
+@keyframes monitor-alarm-warn {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(242, 147, 58, 0); border-color: rgba(242, 147, 58, 0.4); }
+  50% { box-shadow: 0 0 0 3px rgba(242, 147, 58, 0.35); border-color: #f2933a; }
+}
+
+@keyframes monitor-alarm-error {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(240, 96, 96, 0); border-color: rgba(240, 96, 96, 0.45); }
+  50% { box-shadow: 0 0 0 3px rgba(240, 96, 96, 0.45); border-color: var(--status-inactive); }
 }
