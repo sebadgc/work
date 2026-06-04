@@ -12,7 +12,7 @@ const todayKey = () => {
   const d = new Date();
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
-const fmtDay = (k) => { if (!k) return ''; const [y, m, d] = k.split('-'); return `${d}/${m}/${y}`; };
+const fmtDay = (k) => { if (!k || !k.includes('-')) return k || ''; const [y, m, d] = k.split('-'); return `${d}/${m}/${y}`; };
 
 const LEVEL_COLOR = {
   critical: 'red', error: 'red', err: 'red', danger: 'red', alarm: 'red', alert: 'red', high: 'red',
@@ -56,7 +56,7 @@ export default function SnapshotsPage() {
     snapshotsService.getDates({ camera, root }).then(ds => {
       if (!alive) return;
       setDates(ds);
-      setDay(prev => (ds.includes(prev)
+      setDay(prev => (prev === 'all' || ds.includes(prev)
         ? prev
         : (ds.includes(todayKey()) ? todayKey() : (ds[0] || todayKey()))));
     });
@@ -64,14 +64,19 @@ export default function SnapshotsPage() {
   }, [camera, root]);
 
   // Snapshots al cambiar cámara/día
-  const reload = useCallback(() => {
+  const reload = useCallback(async () => {
     if (!camera || !day) { setItems([]); return; }
     setLoading(true);
-    snapshotsService.getSnapshots({ camera, date: day, root }).then(list => {
-      setItems(list);
-      setLoading(false);
-    });
-  }, [camera, day, root]);
+    if (day === 'all') {
+      // Trae todas las fechas disponibles y las mergea (desc por fecha y hora).
+      const all = await Promise.all(dates.map(d => snapshotsService.getSnapshots({ camera, date: d, root })));
+      const merged = all.flat().sort((a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time));
+      setItems(merged);
+    } else {
+      setItems(await snapshotsService.getSnapshots({ camera, date: day, root }));
+    }
+    setLoading(false);
+  }, [camera, day, root, dates]);
 
   useEffect(() => { reload(); }, [reload]);
 
@@ -98,7 +103,8 @@ export default function SnapshotsPage() {
         </select>
 
         <select className="snapshots-page__select" value={day} onChange={e => setDay(e.target.value)}>
-          {dates.length === 0 && <option value={day}>{fmtDay(day)}</option>}
+          <option value="all">{M.snapshots.allDates}</option>
+          {dates.length === 0 && day !== 'all' && <option value={day}>{fmtDay(day)}</option>}
           {dates.map(d => <option key={d} value={d}>{fmtDay(d)}</option>)}
         </select>
 
@@ -127,7 +133,7 @@ export default function SnapshotsPage() {
         <div className="snapshots-page__empty">
           <div className="snapshots-page__empty-icon">▦</div>
           <p className="snapshots-page__empty-title">{M.snapshots.emptyTitle}</p>
-          <p className="snapshots-page__empty-hint">{M.snapshots.emptyHint(camera, fmtDay(day))}</p>
+          <p className="snapshots-page__empty-hint">{M.snapshots.emptyHint(camera, day === 'all' ? M.snapshots.allDates.toLowerCase() : fmtDay(day))}</p>
         </div>
       ) : (
         <div className="snapshots-page__table-wrap">
@@ -163,7 +169,7 @@ export default function SnapshotsPage() {
           size="wide"
           onClose={() => setZoom(null)}
           title={camera}
-          subtitle={`${zoom.casuistica}${zoom.level ? ` · ${zoom.level}` : ''} — ${fmtDay(day)} ${zoom.time}`}
+          subtitle={`${zoom.casuistica}${zoom.level ? ` · ${zoom.level}` : ''} — ${fmtDay(zoom.date)} ${zoom.time}`}
         >
           <img className="snap-zoom__img" src={zoom.url} alt={zoom.casuistica} />
         </Modal>

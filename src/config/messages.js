@@ -165,6 +165,7 @@ export const MESSAGES = {
 
   // ── Página Snapshots ──
   snapshots: {
+    allDates: 'Todas las fechas',
     allAlerts: 'Todas las casuísticas',
     allLevels: 'Todos los niveles',
     refresh: 'Refrescar',
