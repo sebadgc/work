@@ -1,10 +1,15 @@
 import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { MESSAGES } from '../../config';
 import './Modal.css';
 
 /**
  * Modal overlay reutilizable.
  * Cierra con Escape, click en el overlay (afuera), o la X arriba a la derecha.
+ *
+ * Se renderiza con un portal a document.body para que SIEMPRE cubra la pantalla,
+ * aunque se declare dentro de un elemento con transform (que de otro modo
+ * "contendría" el position:fixed y lo encerraría en ese recuadro).
  *
  * @param {'wide'} [size] - 'wide' para contenido ancho (ej: imágenes grandes)
  */
@@ -15,7 +20,7 @@ export default function Modal({ children, onClose, title, subtitle, size }) {
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  return (
+  return createPortal(
     <div className="modal-overlay" onClick={onClose}>
       <div
         className={`modal-content ${size === 'wide' ? 'modal-content--wide' : ''}`}
@@ -38,7 +43,8 @@ export default function Modal({ children, onClose, title, subtitle, size }) {
         )}
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
