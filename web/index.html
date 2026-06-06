@@ -64,9 +64,18 @@
       </label>
 
       <h2>Descargas</h2>
-      <label>Carpeta de destino (opcional)
+      <label>Carpeta por defecto (opcional)
         <input name="savePath" type="text" placeholder="(usa la default de qBittorrent)" />
       </label>
+
+      <div class="dest-section">
+        <div class="dest-head">
+          <span>Destinos rápidos</span>
+          <button type="button" id="add-dest" class="btn-sm">+ Agregar</button>
+        </div>
+        <small class="dest-help">Carpetas para elegir al enviar un torrent. Ej: "Películas" → C:\Descargas\Pelis</small>
+        <div id="dest-list"></div>
+      </div>
 
       <button type="submit" class="btn-primary">Guardar y probar conexión</button>
       <div id="settings-status" class="settings-status"></div>
@@ -79,6 +88,15 @@
     <button class="tab-btn" data-tab="downloads">⬇️<span>Descargas</span></button>
     <button class="tab-btn" data-tab="settings">⚙️<span>Ajustes</span></button>
   </nav>
+
+  <!-- Selector de carpeta al enviar -->
+  <div id="chooser" class="chooser-overlay">
+    <div class="chooser-sheet">
+      <div class="chooser-title">¿Dónde guardarlo?</div>
+      <div id="chooser-list" class="chooser-list"></div>
+      <button type="button" class="btn-sm" id="chooser-cancel">Cancelar</button>
+    </div>
+  </div>
 
   <div id="toast" class="toast"></div>
 

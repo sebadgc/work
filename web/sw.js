@@ -1,7 +1,7 @@
 // Service worker mínimo: cachea el shell de la app para que sea instalable y
 // funcione aunque la red flaquee. NUNCA cachea /api/ (datos en vivo).
 
-const CACHE = 'torrent-remote-v1';
+const CACHE = 'torrent-remote-v2';
 const SHELL = ['/', '/index.html', '/styles.css', '/app.js', '/manifest.webmanifest', '/icon.svg'];
 
 self.addEventListener('install', (e) => {

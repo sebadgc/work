@@ -2,6 +2,9 @@
 
 const $ = (sel) => document.querySelector(sel);
 
+// Config cacheada en el cliente (para saber los destinos al enviar).
+let appConfig = { destinations: [], savePath: '' };
+
 // ---------- Helpers de red ----------
 async function api(path, opts = {}) {
   const res = await fetch(path, {
@@ -107,15 +110,56 @@ function renderSearch(results) {
 }
 
 async function sendLink(link, btn) {
+  const dests = appConfig.destinations || [];
+  let savePath = '';
+  if (dests.length) {
+    const choice = await chooseDestination(dests);
+    if (choice === null) return; // cancelado
+    savePath = choice;
+  }
   if (btn) { btn.disabled = true; btn.textContent = 'Enviando…'; }
   try {
-    await api('/api/torrents/add', { method: 'POST', body: JSON.stringify({ link }) });
+    await api('/api/torrents/add', { method: 'POST', body: JSON.stringify({ link, savePath }) });
     toast('✅ Enviado a la PC', 'ok');
     if (btn) btn.textContent = '✓ Enviado';
   } catch (err) {
     toast(err.message, 'bad');
     if (btn) { btn.disabled = false; btn.textContent = 'Enviar a la PC'; }
   }
+}
+
+// Bottom sheet para elegir carpeta. Resuelve: null (cancelar), '' (default) o una ruta.
+function chooseDestination(dests) {
+  return new Promise((resolve) => {
+    const overlay = $('#chooser');
+    const list = $('#chooser-list');
+    const cancelBtn = $('#chooser-cancel');
+    const cleanup = () => { overlay.classList.remove('show'); list.innerHTML = ''; cancelBtn.onclick = null; };
+
+    const opts = [
+      { label: '📁 Carpeta por defecto', sub: appConfig.savePath || 'la default de qBittorrent', value: '', cls: 'default' },
+      ...dests.map((d) => ({ label: `📂 ${d.label}`, sub: d.path, value: d.path })),
+      { label: '✏️ Otra carpeta…', sub: 'escribir una ruta', value: '__custom__' },
+    ];
+    for (const o of opts) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = `chooser-opt ${o.cls || ''}`;
+      b.innerHTML = `${esc(o.label)}${o.sub ? `<span class="sub">${esc(o.sub)}</span>` : ''}`;
+      b.onclick = () => {
+        if (o.value === '__custom__') {
+          const p = prompt('Ruta de destino en la PC:', appConfig.savePath || '');
+          if (p === null) return; // mantener abierto el selector
+          cleanup(); resolve(p.trim());
+        } else {
+          cleanup(); resolve(o.value);
+        }
+      };
+      list.appendChild(b);
+    }
+    cancelBtn.onclick = () => { cleanup(); resolve(null); };
+    overlay.classList.add('show');
+  });
 }
 
 // Magnet manual
@@ -225,6 +269,7 @@ setInterval(() => {
 async function loadSettings() {
   try {
     const cfg = await api('/api/config');
+    appConfig = cfg; // cachear para el selector de carpeta al enviar
     const f = $('#settings-form');
     f.qbUrl.value = cfg.qbUrl || '';
     f.qbUser.value = cfg.qbUser || '';
@@ -232,10 +277,36 @@ async function loadSettings() {
     f.savePath.value = cfg.savePath || '';
     $('#qbpass-hint').textContent = cfg.qbPassSet ? '(guardada — dejá en blanco para no cambiar)' : '';
     $('#apikey-hint').textContent = cfg.indexerApiKeySet ? '(guardada)' : '';
+    renderDests(cfg.destinations || []);
   } catch (err) {
     toast(err.message, 'bad');
   }
 }
+
+function destRow(d = { label: '', path: '' }) {
+  const row = document.createElement('div');
+  row.className = 'dest-row';
+  row.innerHTML = `
+    <input class="label-in" type="text" placeholder="Nombre" value="${esc(d.label)}" />
+    <input class="path-in" type="text" placeholder="Ruta (C:\\...)" value="${esc(d.path)}" />
+    <button type="button" class="rm" title="Quitar">×</button>`;
+  row.querySelector('.rm').onclick = () => row.remove();
+  return row;
+}
+function renderDests(dests) {
+  const list = $('#dest-list');
+  list.innerHTML = '';
+  dests.forEach((d) => list.appendChild(destRow(d)));
+}
+function collectDests() {
+  return [...$('#dest-list').querySelectorAll('.dest-row')]
+    .map((r) => ({
+      label: r.querySelector('.label-in').value.trim(),
+      path: r.querySelector('.path-in').value.trim(),
+    }))
+    .filter((d) => d.path);
+}
+$('#add-dest').addEventListener('click', () => $('#dest-list').appendChild(destRow()));
 
 $('#settings-form').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -250,6 +321,7 @@ $('#settings-form').addEventListener('submit', async (e) => {
     indexerUrl: f.indexerUrl.value.trim(),
     indexerApiKey: f.indexerApiKey.value.trim(),
     savePath: f.savePath.value.trim(),
+    destinations: collectDests(),
   };
   try {
     const { qb } = await api('/api/config', { method: 'POST', body: JSON.stringify(patch) });
@@ -282,6 +354,7 @@ async function checkStatus() {
 }
 
 // ---------- Init ----------
+loadSettings(); // cachea config (destinos) y rellena el form de Ajustes
 checkStatus();
 setInterval(checkStatus, 15000);
 

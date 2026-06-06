@@ -104,10 +104,12 @@ export async function listTorrents(cfg) {
   }));
 }
 
-export async function addTorrent(cfg, link) {
+export async function addTorrent(cfg, link, savePath) {
   const params = new URLSearchParams();
   params.set('urls', link); // acepta magnet: o URL http(s) a un .torrent
-  if (cfg.savePath) params.set('savepath', cfg.savePath);
+  // Ruta elegida para este torrent; si no hay, cae a la default de la config.
+  const dest = (savePath || '').trim() || cfg.savePath;
+  if (dest) params.set('savepath', dest);
   const res = await api(cfg, '/torrents/add', { method: 'POST', body: params });
   const text = (await res.text()).trim();
   if (!res.ok || text === 'Fails.') {

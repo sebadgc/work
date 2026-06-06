@@ -126,12 +126,12 @@ async function handleApi(req, res, pathname, url) {
     return sendJson(res, 200, { torrents });
   }
   if (pathname === '/api/torrents/add' && req.method === 'POST') {
-    const { link } = await readBody(req);
+    const { link, savePath } = await readBody(req);
     const l = (link || '').trim();
     if (!/^(magnet:|https?:)/i.test(l)) {
       return sendJson(res, 400, { error: 'Enlace inválido. Debe ser un magnet: o una URL http(s) a un .torrent.' });
     }
-    await qb.addTorrent(cfg, l);
+    await qb.addTorrent(cfg, l, savePath);
     return sendJson(res, 200, { ok: true });
   }
   if (pathname === '/api/torrents/pause' && req.method === 'POST') {

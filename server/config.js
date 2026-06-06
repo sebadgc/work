@@ -19,8 +19,10 @@ const DEFAULTS = {
   //   http://localhost:9117/api/v2.0/indexers/all/results/torznab/api
   indexerUrl: process.env.INDEXER_URL || '',
   indexerApiKey: process.env.INDEXER_APIKEY || '',
-  // Carpeta de descarga opcional (vacío = la default de qBittorrent).
+  // Carpeta de descarga por defecto (vacío = la default de qBittorrent).
   savePath: process.env.SAVE_PATH || '',
+  // Destinos rápidos para elegir al enviar un torrent: [{ label, path }].
+  destinations: [],
 };
 
 let cache = null;
@@ -43,6 +45,13 @@ export async function saveConfig(patch) {
   for (const k of ['qbPass', 'indexerApiKey']) {
     if (clean[k] === '' || clean[k] === undefined) delete clean[k];
   }
+  // Normalizar destinos: descartar filas sin ruta.
+  if (Array.isArray(clean.destinations)) {
+    clean.destinations = clean.destinations
+      .map((d) => ({ label: String(d.label || '').trim(), path: String(d.path || '').trim() }))
+      .filter((d) => d.path)
+      .map((d) => ({ label: d.label || d.path, path: d.path }));
+  }
   cache = { ...current, ...clean };
   await mkdir(DATA_DIR, { recursive: true });
   await writeFile(CONFIG_FILE, JSON.stringify(cache, null, 2), 'utf8');
@@ -58,5 +67,6 @@ export function publicConfig(cfg) {
     indexerUrl: cfg.indexerUrl,
     indexerApiKeySet: Boolean(cfg.indexerApiKey),
     savePath: cfg.savePath,
+    destinations: Array.isArray(cfg.destinations) ? cfg.destinations : [],
   };
 }

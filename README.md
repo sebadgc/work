@@ -63,7 +63,54 @@ qBittorrent responde.
   También podés desplegar *"Pegar un enlace magnet"* y enviar uno a mano.
 - **⬇️ Descargas**: lista en vivo con progreso, velocidad y ETA. Pausar / reanudar /
   borrar (te pregunta si querés borrar también los archivos).
-- **⚙️ Ajustes**: conexión a qBittorrent, indexador y carpeta de destino.
+- **⚙️ Ajustes**: conexión a qBittorrent, indexador, carpeta por defecto y
+  **destinos rápidos**.
+
+### Elegir la carpeta de descarga
+
+En **Ajustes → Destinos rápidos** podés guardar carpetas con un nombre, por ejemplo:
+
+| Nombre | Ruta |
+|--------|------|
+| Películas | `D:\Descargas\Pelis` |
+| Series | `D:\Descargas\Series` |
+| Música | `D:\Descargas\Musica` |
+
+Cuando tengas al menos un destino, al tocar **"Enviar a la PC"** aparece un
+selector para elegir dónde guardar ese torrent (o usar la *carpeta por defecto*,
+o escribir *otra carpeta* en el momento). Si no cargás ningún destino, todo va a
+la carpeta por defecto sin preguntar.
+
+> Las rutas son **de la PC** (donde corre qBittorrent), no del celular.
+> Asegurate de que existan o que qBittorrent pueda crearlas.
+
+---
+
+## Autoarranque en Windows
+
+Para que el servidor arranque solo cuando prendés la PC (sin abrir nada a mano):
+
+1. **Una sola vez**, andá a la carpeta `windows\` y hacé **doble clic en
+   `install-autostart.bat`**. Eso crea un acceso directo en la carpeta de Inicio
+   de Windows que lanza el servidor **en segundo plano** (sin ventana negra) cada
+   vez que iniciás sesión.
+2. Para que empiece **ya mismo** sin reiniciar, hacé doble clic en
+   `windows\torrent-remote.vbs`.
+
+Otros scripts en `windows\`:
+
+| Script | Para qué |
+|--------|----------|
+| `start.bat` | Arrancar manualmente **con consola** (útil la 1ª vez para ver errores) |
+| `torrent-remote.vbs` | Arrancar en segundo plano, sin ventana |
+| `install-autostart.bat` | Activar el autoarranque al iniciar Windows |
+| `uninstall-autostart.bat` | Desactivar el autoarranque |
+
+> Requiere tener **Node.js** instalado y en el `PATH` (lo está si lo instalaste
+> con el instalador oficial). Verificá abriendo `cmd` y escribiendo `node -v`.
+
+> **Tip:** activá también el inicio automático de **qBittorrent** y de
+> **Jackett/Prowlarr** con Windows, así todo queda listo solo al prender la PC.
 
 ---
 
@@ -105,6 +152,9 @@ y la **API Key** está arriba a la derecha en Jackett.
 ├── web/                 # PWA mobile-first (HTML/CSS/JS, sin build)
 │   ├── index.html  styles.css  app.js
 │   ├── manifest.webmanifest  sw.js  icon.svg
+├── windows/             # Scripts de arranque/autoarranque para Windows
+│   ├── start.bat  torrent-remote.vbs
+│   ├── install-autostart.bat  uninstall-autostart.bat
 ├── data/                # config.json (generado, ignorado por git)
 └── package.json
 ```
