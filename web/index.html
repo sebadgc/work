@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f1115" />
+  <title>Torrent Remote</title>
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/icon.svg" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <h1>🧲 Torrent Remote</h1>
+    <span id="status-dot" class="dot" title="Estado de qBittorrent"></span>
+  </header>
+
+  <!-- Pestaña Buscar -->
+  <main id="tab-search" class="tab active">
+    <form id="search-form" class="search-bar">
+      <input id="search-input" type="search" placeholder="Buscar torrents…" autocomplete="off" />
+      <button type="submit" class="btn-primary">Buscar</button>
+    </form>
+
+    <details class="magnet-box">
+      <summary>Pegar un enlace magnet manualmente</summary>
+      <form id="magnet-form" class="magnet-form">
+        <input id="magnet-input" type="text" placeholder="magnet:?xt=… o URL a un .torrent" />
+        <button type="submit" class="btn-primary">Enviar a la PC</button>
+      </form>
+    </details>
+
+    <div id="search-results" class="results"></div>
+    <div id="search-empty" class="empty">Buscá algo o pegá un magnet para empezar.</div>
+  </main>
+
+  <!-- Pestaña Descargas -->
+  <main id="tab-downloads" class="tab">
+    <div id="downloads-list" class="results"></div>
+    <div id="downloads-empty" class="empty">No hay descargas todavía.</div>
+  </main>
+
+  <!-- Pestaña Ajustes -->
+  <main id="tab-settings" class="tab">
+    <form id="settings-form" class="settings">
+      <h2>qBittorrent (en tu PC)</h2>
+      <label>URL de la Web UI
+        <input name="qbUrl" type="text" placeholder="http://localhost:8080" />
+      </label>
+      <label>Usuario
+        <input name="qbUser" type="text" autocomplete="username" />
+      </label>
+      <label>Contraseña <small id="qbpass-hint"></small>
+        <input name="qbPass" type="password" autocomplete="current-password" placeholder="••••••••" />
+      </label>
+
+      <h2>Búsqueda (Jackett / Prowlarr)</h2>
+      <label>URL Torznab
+        <input name="indexerUrl" type="text" placeholder="http://localhost:9117/api/v2.0/indexers/all/results/torznab/api" />
+      </label>
+      <label>API Key <small id="apikey-hint"></small>
+        <input name="indexerApiKey" type="text" placeholder="(de Jackett/Prowlarr)" />
+      </label>
+
+      <h2>Descargas</h2>
+      <label>Carpeta por defecto (opcional)
+        <input name="savePath" type="text" placeholder="(usa la default de qBittorrent)" />
+      </label>
+
+      <div class="dest-section">
+        <div class="dest-head">
+          <span>Destinos rápidos</span>
+          <button type="button" id="add-dest" class="btn-sm">+ Agregar</button>
+        </div>
+        <small class="dest-help">Carpetas para elegir al enviar un torrent. Ej: "Películas" → C:\Descargas\Pelis</small>
+        <div id="dest-list"></div>
+      </div>
+
+      <button type="submit" class="btn-primary">Guardar y probar conexión</button>
+      <div id="settings-status" class="settings-status"></div>
+    </form>
+  </main>
+
+  <!-- Navegación inferior -->
+  <nav class="tabbar">
+    <button class="tab-btn active" data-tab="search">🔍<span>Buscar</span></button>
+    <button class="tab-btn" data-tab="downloads">⬇️<span>Descargas</span></button>
+    <button class="tab-btn" data-tab="settings">⚙️<span>Ajustes</span></button>
+  </nav>
+
+  <!-- Selector de carpeta al enviar -->
+  <div id="chooser" class="chooser-overlay">
+    <div class="chooser-sheet">
+      <div class="chooser-title">¿Dónde guardarlo?</div>
+      <div id="chooser-list" class="chooser-list"></div>
+      <button type="button" class="btn-sm" id="chooser-cancel">Cancelar</button>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="/app.js" type="module"></script>
+</body>
+</html>

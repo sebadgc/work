@@ -1,158 +1,186 @@
-# Monitor AIB — Frontend de Monitoreo de Cámaras
+# 🧲 Torrent Remote
 
-## Descripción
+Buscá torrents y mandalos a descargar en tu **PC** desde el navegador de tu
+**celular**. La PC hace el trabajo pesado (qBittorrent baja los archivos); el
+celu es solo el control remoto.
 
-Frontend modular en React + Vite para monitoreo y control de cámaras en tiempo real.
-Permite iniciar procesamiento de pluma extendida y detección de colisiones,
-agregar métodos de análisis adicionales vía PATCH, **ver el feed en vivo (WebRTC)**,
-y revisar el **historial de logs** y la **galería de snapshots** por cámara.
+```
+[ Celular (PWA) ]  ──WiFi──>  [ Servidor Node en tu PC ]  ──>  qBittorrent  +  Jackett/Prowlarr
+   buscar / enviar / ver               (este proyecto)            (descarga)      (búsqueda)
+```
 
-Habla con un backend separado (Python) que ingiere el RTSP y procesa frame a frame.
+- **Sin dependencias** de npm: solo necesitás Node.js ≥ 18.
+- **Sin build**: `npm start` y listo.
+- Funciona como **PWA**: podés "instalarla" en la pantalla de inicio del celu.
 
-## Requisitos
+---
 
-- Node.js ≥ 18
-- npm ≥ 9
-- Backend API corriendo (URL configurable en Settings o `.env`)
+## Qué necesitás en tu PC
 
-## Instalación y uso
+1. **Node.js ≥ 18** (este proyecto).
+2. **qBittorrent** con la **Web UI activada**:
+   `Herramientas → Opciones → Web UI` → marcá "Web User Interface (Remote control)",
+   anotá el puerto (default `8080`), usuario y contraseña.
+3. **(Para buscar)** un indexador **Jackett** o **Prowlarr** corriendo en tu PC.
+   Te da una URL *Torznab* y una *API Key*. Sin esto, igual podés pegar magnets a mano.
+
+> El celu y la PC tienen que estar en la **misma red WiFi**.
+
+---
+
+## Cómo arrancarlo
+
+En la PC, dentro de esta carpeta:
 
 ```bash
-npm install
-npm run dev        # Desarrollo → http://localhost:3000
-npm run build      # Build para producción → dist/
-npm run preview    # Preview del build
+npm start
 ```
 
-> Para testear el feed sin acceso al server real de cámaras, usá el simulador
-> **`rtsp-sim`** (proyecto aparte). Ver sección más abajo.
-
-## Páginas (sidebar)
-
-| Página | Descripción |
-|--------|-------------|
-| **Cámaras** | Agregar/detener cámaras, ver el feed en vivo, métodos PATCH, logs en vivo |
-| **Logs** | Historial de logs (persistido) por cámara, con filtros y búsqueda |
-| **Snapshots** | Galería de capturas de alerta (cámara, alerta, timestamp) |
-
-## Feed en vivo (RTSP → WebRTC)
-
-Los navegadores no reproducen `rtsp://` directo. El feed se ve vía **WebRTC (WHEP)**
-servido por un gateway (MediaMTX). El front mapea el `source` de la cámara:
+Vas a ver algo así:
 
 ```
-rtsp://host:port/<path>   →   http://<gateway-webrtc>/<path>/whep
+  🧲  Torrent Remote corriendo
+
+  En esta PC:     http://localhost:8088
+  Desde el celu:  http://192.168.0.42:8088   (misma WiFi)
 ```
 
-El gateway (`webrtcBaseUrl`) se configura en **Settings (⚙)**; default
-`http://localhost:8889`. El feed sigue corriendo aunque cambies de página
-(Logs/Snapshots) — las páginas se mantienen montadas.
+En el **celular**, abrí esa dirección `http://192.168.0.x:8088` en el navegador.
+La primera vez, andá a **Ajustes (⚙)** y cargá:
+
+- **qBittorrent**: URL (`http://localhost:8080`), usuario y contraseña.
+- **Búsqueda** (opcional): URL Torznab y API Key de Jackett/Prowlarr.
+
+Tocá **Guardar y probar conexión**. El puntito del header se pone verde 🟢 cuando
+qBittorrent responde.
+
+---
+
+## Cómo se usa
+
+- **🔍 Buscar**: escribí y tocá *Buscar*. En cada resultado, **"Enviar a la PC"**
+  agrega el torrent a qBittorrent y empieza a bajar.
+  También podés desplegar *"Pegar un enlace magnet"* y enviar uno a mano.
+- **⬇️ Descargas**: lista en vivo con progreso, velocidad y ETA. Pausar / reanudar /
+  borrar (te pregunta si querés borrar también los archivos).
+- **⚙️ Ajustes**: conexión a qBittorrent, indexador, carpeta por defecto y
+  **destinos rápidos**.
+
+### Elegir la carpeta de descarga
+
+En **Ajustes → Destinos rápidos** podés guardar carpetas con un nombre, por ejemplo:
+
+| Nombre | Ruta |
+|--------|------|
+| Películas | `D:\Descargas\Pelis` |
+| Series | `D:\Descargas\Series` |
+| Música | `D:\Descargas\Musica` |
+
+Cuando tengas al menos un destino, al tocar **"Enviar a la PC"** aparece un
+selector para elegir dónde guardar ese torrent (o usar la *carpeta por defecto*,
+o escribir *otra carpeta* en el momento). Si no cargás ningún destino, todo va a
+la carpeta por defecto sin preguntar.
+
+> Las rutas son **de la PC** (donde corre qBittorrent), no del celular.
+> Asegurate de que existan o que qBittorrent pueda crearlas.
+
+---
+
+## Autoarranque en Windows
+
+Para que el servidor arranque solo cuando prendés la PC (sin abrir nada a mano):
+
+1. **Una sola vez**, andá a la carpeta `windows\` y hacé **doble clic en
+   `install-autostart.bat`**. Eso crea un acceso directo en la carpeta de Inicio
+   de Windows que lanza el servidor **en segundo plano** (sin ventana negra) cada
+   vez que iniciás sesión.
+2. Para que empiece **ya mismo** sin reiniciar, hacé doble clic en
+   `windows\torrent-remote.vbs`.
+
+Otros scripts en `windows\`:
+
+| Script | Para qué |
+|--------|----------|
+| `start.bat` | Arrancar manualmente **con consola** (útil la 1ª vez para ver errores) |
+| `torrent-remote.vbs` | Arrancar en segundo plano, sin ventana |
+| `install-autostart.bat` | Activar el autoarranque al iniciar Windows |
+| `uninstall-autostart.bat` | Desactivar el autoarranque |
+
+> Requiere tener **Node.js** instalado y en el `PATH` (lo está si lo instalaste
+> con el instalador oficial). Verificá abriendo `cmd` y escribiendo `node -v`.
+
+> **Tip:** activá también el inicio automático de **qBittorrent** y de
+> **Jackett/Prowlarr** con Windows, así todo queda listo solo al prender la PC.
+
+---
 
 ## Configuración
 
-### Settings (⚙ en el header) — persistido en localStorage
+Todo se edita desde **Ajustes** y se guarda en `data/config.json` (ignorado por git).
+También podés sembrar defaults con variables de entorno — ver `.env.example`.
 
-| Campo | Default | Descripción |
-|-------|---------|-------------|
-| `apiBaseUrl` | `http://localhost:8000` | Backend de procesamiento (POST/DELETE/PATCH/SSE) |
-| `webrtcBaseUrl` | `http://localhost:8889` | Gateway WebRTC (WHEP) para el feed |
-| `rtspBaseUrl` | `rtsp://localhost:8554` | Base RTSP de referencia |
+| Variable | Default | Qué es |
+|---|---|---|
+| `PORT` | `8088` | Puerto del servidor (lo que abrís en el celu) |
+| `QB_URL` | `http://localhost:8080` | Web UI de qBittorrent |
+| `QB_USER` / `QB_PASS` | `admin` / `adminadmin` | Credenciales de qBittorrent |
+| `INDEXER_URL` | — | URL Torznab de Jackett ("all") o Prowlarr |
+| `INDEXER_APIKEY` | — | API Key del indexador |
+| `SAVE_PATH` | — | Carpeta de descarga (vacío = default de qB) |
 
-### `.env` (opcional, defaults de build)
+### Ejemplo de URL Torznab (Jackett)
 
-```env
-VITE_APP_MODE=development                 # development | production
-VITE_API_BASE_URL=http://localhost:8000   # default de apiBaseUrl
-VITE_LOG_POLL_INTERVAL=2000
-VITE_MAX_LOG_LINES=500
-VITE_DEV_VIDEO_DIR=./videos               # carpeta de videos de prueba (dev)
-```
-
-## Testear con un RTSP simulado (sin acceso al server real)
-
-El simulador es un **proyecto independiente** (`rtsp-sim`), separado de este
-frontend. Levanta un RTSP en vivo en `localhost` a partir de un video, que sirve
-al front (WebRTC) y al back (RTSP). Sin instalación manual (ffmpeg vía
-`ffmpeg-static`, MediaMTX auto-descargado).
-
-```bash
-cd ../rtsp-sim
-npm install
-node index.mjs ./mi-video.mp4 --name cam-test-01
-# luego, en Cámaras → Agregar: Source = rtsp://localhost:8554/cam-test-01
-```
-
-Ver detalles y fallback en el `README.md` del proyecto `rtsp-sim`.
-
-## Flujo de uso
-
-1. Click en **"+ Agregar cámara"**.
-2. Ingresar `camera_id` y `source` (URL RTSP).
-3. Elegir tipo: **Pluma Extendida** o **Detección de Colisión**.
-4. Configurar parámetros (cooldowns o alarm_id) → POST al backend → la cámara aparece activa.
-5. La cámara seleccionada se ve grande arriba; el resto en una grilla debajo. Click en
-   una chica para hacerla principal.
-6. Para pluma extendida: botón **"+ Método"** para agregar análisis PATCH.
-   **Capturar** genera un snapshot manual del frame actual.
-
-No hay GET de cámaras — se crean al hacer POST y viven en el estado local.
-
-## Arquitectura
+En Jackett, en el indexador agregado **"all"**, copiá el botón *Torznab Feed*. Queda:
 
 ```
-src/
-├── config/                     # Configuración centralizada
-│   ├── app.config.js           # Variables de entorno y defaults
-│   ├── endpoints.config.js     # Endpoints API + PLUMA_PATCH_METHODS
-│   ├── settings.config.js      # Settings de usuario (defaults) + buildWhepUrl()
-│   └── projects.config.js      # Páginas del sidebar (Cámaras/Logs/Snapshots)
-│
-├── api/                        # Cliente HTTP + cameraService
-├── hooks/
-│   ├── useCameraState.js       # Estado de cámaras activas + métodos
-│   ├── useLogs.js              # Logs por cámara (persistidos) + ingesta SSE de snapshots
-│   ├── useSnapshots.js         # Store de snapshots (persistido)
-│   ├── useSettings.js          # Settings de usuario (localStorage)
-│   └── useWhepStream.js        # Reproductor WebRTC/WHEP (RTCPeerConnection)
-│
-├── context/AppContext.jsx      # Provider global (envuelve todas las páginas)
-│
-├── components/
-│   ├── common/                 # StatusDot, Button, FormField, Modal, Badge
-│   ├── cameras/                # CameraCard, CameraGrid, CameraFeed (feed en vivo)
-│   ├── logs/                   # LogPanel (vivo)
-│   ├── modals/                 # AddCameraModal, PatchMethodModal, SettingsModal
-│   └── layout/                 # AppHeader (+ Settings), Sidebar
-│
-├── pages/                      # CamerasPage, LogsPage, SnapshotsPage
-├── styles/                     # tokens.css, global.css
-├── App.jsx                     # Shell: Sidebar + Header + página activa
-└── main.jsx
+http://localhost:9117/api/v2.0/indexers/all/results/torznab/api
 ```
 
-## Endpoints del backend
+y la **API Key** está arriba a la derecha en Jackett.
 
-| Método | Ruta | Body | Descripción |
-|--------|------|------|-------------|
-| POST | `/start_pluma_extendida` | `{ camera_id, source, pluma_config }` | Inicia procesamiento pluma |
-| POST | `/start_collision_detection` | `{ camera_id, source, collision_config }` | Inicia detección colisión |
-| DELETE | `/{camera_id}` | — | Detiene cámara |
-| PATCH | `/{camera_id}/{method}` | `config` (opcional) | Agrega método a pluma extendida |
-| GET (SSE) | `/{camera_id}/logs` | — | Stream de logs (y snapshots de detección) |
+---
 
-### Snapshots vía SSE
+## Estructura
 
-Si un evento SSE trae `image` / `snapshot` / `frame` (URL o dataURL) junto con
-`alert`/`method`, se agrega automáticamente a la galería de Snapshots.
+```
+.
+├── server/
+│   ├── index.js         # Servidor HTTP: sirve la PWA + API puente
+│   ├── config.js        # Carga/guarda configuración (data/config.json)
+│   ├── qbittorrent.js   # Cliente de la Web API de qBittorrent
+│   └── search.js        # Búsqueda Torznab (Jackett/Prowlarr)
+├── web/                 # PWA mobile-first (HTML/CSS/JS, sin build)
+│   ├── index.html  styles.css  app.js
+│   ├── manifest.webmanifest  sw.js  icon.svg
+├── windows/             # Scripts de arranque/autoarranque para Windows
+│   ├── start.bat  torrent-remote.vbs
+│   ├── install-autostart.bat  uninstall-autostart.bat
+├── data/                # config.json (generado, ignorado por git)
+└── package.json
+```
 
-## Feeds y testeo
+---
 
-Solo RTSP (vía gateway WebRTC) + requests al backend. Para testear sin acceso al
-server real de cámaras, usá el proyecto `rtsp-sim` (ver arriba). El botón
-**Capturar** de cada cámara genera un snapshot manual del frame actual.
+## Notas
 
-## Agregar una nueva página
+- **Compatibilidad qBittorrent 4.x y 5.x**: en 5.x los endpoints `pause`/`resume`
+  pasaron a `stop`/`start`; el cliente prueba uno y cae al otro automáticamente.
+- **Acceso desde fuera de casa**: este proyecto asume red local. Para usarlo por
+  internet, lo recomendable es una VPN como **Tailscale** (entrás a la IP de
+  Tailscale de tu PC, sin abrir puertos). No expongas esto directo a internet sin
+  una capa de autenticación/VPN.
+- **Seguridad**: la API no tiene login propio (pensada para LAN de confianza).
+  Las contraseñas se guardan en `data/config.json` en tu PC.
 
-1. Crear el componente en `src/pages/NuevaPage.jsx`.
-2. Agregar una entrada (lazy) en `src/config/projects.config.js`.
-3. (Si necesita estado compartido, ya está disponible vía `useAppContext`.)
+---
+
+## Solución de problemas
+
+| Síntoma | Causa probable |
+|---|---|
+| Puntito rojo 🔴 / "No se pudo conectar" | qBittorrent cerrado o Web UI desactivada; URL/puerto mal |
+| "Usuario o contraseña incorrectos" | Credenciales de la Web UI de qBittorrent |
+| "IP baneada" | Demasiados logins fallidos; reiniciá qBittorrent o esperá |
+| Búsqueda da error | Falta `INDEXER_URL`/API Key, o Jackett/Prowlarr no está corriendo |
+| El celu no abre la página | No están en la misma WiFi, o el firewall de la PC bloquea el puerto |
+```
