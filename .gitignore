@@ -1,17 +1,5 @@
-# Build
-dist/
-
-# Config de cámaras editada en runtime (preset overrides)
-cameras.local.json
-
-# Datos persistidos por el dev server (logs históricos + capturas manuales)
-data/
-
-# Entorno
-.env
-.env.local
-*.local
-
-# Logs
+node_modules/
+data/config.json
 *.log
-npm-debug.log*
+.DS_Store
+.env

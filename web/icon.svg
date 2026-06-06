@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <rect width="192" height="192" rx="42" fill="#0f1115"/>
+  <g transform="translate(96 100)">
+    <!-- Imán en herradura -->
+    <path d="M-44 -36 a44 44 0 0 1 88 0 v44 a44 44 0 0 1 -88 0 z"
+          fill="none" stroke="#4f7cff" stroke-width="22" stroke-linecap="butt"
+          transform="scale(1 -1)"/>
+    <rect x="-55" y="22" width="22" height="26" rx="3" fill="#ff453a"/>
+    <rect x="33" y="22" width="22" height="26" rx="3" fill="#e6e8ec"/>
+  </g>
+</svg>
